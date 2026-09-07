@@ -1,0 +1,8 @@
+# Built by GitHub Actions on every push - never committed.
+dist/
+
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db
+.indexnow_key

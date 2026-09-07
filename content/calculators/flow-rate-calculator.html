@@ -1,0 +1,124 @@
+{
+  "title": "Flow Rate Calculator (Extrusion Multiplier)",
+  "page_title": "Flow Rate Calculator – Extrusion Multiplier from a Single-Wall Cube",
+  "description": "Calibrate flow rate / extrusion multiplier: enter the slicer line width and measured single-wall thickness and get the corrected flow as a percent or ratio.",
+  "lede": "Print a single-wall cube, measure the walls with calipers, and get the flow percentage (Cura, PrusaSlicer) or ratio (Bambu Studio, OrcaSlicer) to type into the filament profile.",
+  "short": "Corrected flow / extrusion multiplier from a single-wall cube, as a percentage or a ratio.",
+  "category": "calibration",
+  "order": 20,
+  "updated": "2026-09-07",
+  "related": ["e-steps-calculator", "shrinkage-compensation-calculator", "max-volumetric-speed-calculator", "temp-tower-generator"],
+  "faq": [
+    {"q": "How do I calibrate flow rate?", "a": "Print a 20 mm cube with one wall, no top layers, no infill (vase/spiralize mode is easiest) at your normal settings. Measure each wall with calipers near mid-height. New flow = current flow × line width set in the slicer ÷ average measured thickness. So a 0.45 mm line width that measures 0.48 mm means flow should drop to about 94% of what it was."},
+    {"q": "Is flow rate the same as extrusion multiplier?", "a": "Yes. Cura and Bambu Studio call it Flow (Cura in percent, Bambu/Orca as a ratio like 0.98), PrusaSlicer and SuperSlicer call it Extrusion multiplier (a ratio like 0.95), Simplify3D calls it Extrusion Multiplier. They all scale how much plastic is pushed for every line."},
+    {"q": "Should I calibrate e-steps or flow first?", "a": "E-steps first, once per extruder. Flow is then tuned per material and corrects everything e-steps can't: filament diameter tolerance, how the melt spreads at a given temperature, and slicer assumptions. If you tune flow before e-steps you'll be re-doing it."},
+    {"q": "Is the single-wall method accurate?", "a": "It's the classic approach and good to within a couple of percent. Its known weakness is that a single unsupported wall can bulge, so measure at mid-height rather than the top, and take all four sides. OrcaSlicer's built-in flow calibration (pass 1 and 2) prints patches to compare visually and is a good cross-check."},
+    {"q": "What flow rate is normal?", "a": "For PLA, 0.92–1.00 (92–100%). PETG is usually a little lower, 0.90–0.97. ABS/ASA 0.93–1.00. TPU often needs over 100% because it compresses in the extruder. If the calculator wants more than about ±8% from stock, suspect e-steps or an extruder problem rather than flow."}
+  ]
+}
+<form id="f" class="calc-form" novalidate>
+  <div class="fields">
+    <div class="field">
+      <label for="exp">Line width set in the slicer</label>
+      <div class="inwrap"><input type="number" id="exp" value="0.45" min="0.05" step="0.01" inputmode="decimal"><span class="unit">mm</span></div>
+      <p class="hint">The wall / outer wall line width you printed the cube with.</p>
+    </div>
+    <div class="field">
+      <label for="cur">Current flow</label>
+      <div class="inwrap"><input type="number" id="cur" value="100" min="1" step="any" inputmode="decimal"><span class="unit" id="curunit">%</span></div>
+    </div>
+    <div class="field">
+      <label for="fmt">Your slicer expresses flow as</label>
+      <select id="fmt">
+        <option value="pct" selected>Percent (Cura, Simplify3D)</option>
+        <option value="ratio">Ratio (Bambu, Orca, PrusaSlicer)</option>
+      </select>
+    </div>
+  </div>
+  <p class="group-label" style="margin-top:14px">Measured wall thickness (calipers, mid-height)</p>
+  <div class="fields">
+    <div class="field"><label for="w1">Side 1</label><div class="inwrap"><input type="number" id="w1" value="0.48" min="0" step="0.01" inputmode="decimal"><span class="unit">mm</span></div></div>
+    <div class="field"><label for="w2">Side 2</label><div class="inwrap"><input type="number" id="w2" value="0.47" min="0" step="0.01" inputmode="decimal"><span class="unit">mm</span></div></div>
+    <div class="field"><label for="w3">Side 3</label><div class="inwrap"><input type="number" id="w3" value="0.49" min="0" step="0.01" inputmode="decimal"><span class="unit">mm</span></div></div>
+    <div class="field"><label for="w4">Side 4</label><div class="inwrap"><input type="number" id="w4" value="0.48" min="0" step="0.01" inputmode="decimal"><span class="unit">mm</span></div></div>
+  </div>
+  <div class="results">
+    <div class="result primary"><div class="l">New flow</div><div class="v" id="r_new">—</div><div class="s" id="r_alt"></div></div>
+    <div class="result"><div class="l">Average wall</div><div class="v" id="r_avg">—</div><div class="s" id="r_spread"></div></div>
+    <div class="result"><div class="l">Change</div><div class="v" id="r_change">—</div></div>
+  </div>
+  <div id="warn" class="warn-box" hidden></div>
+  <div class="actions"><button type="button" class="btn-ghost" data-reset>Reset</button></div>
+</form>
+<script>
+(function () {
+  function calc() {
+    var ratioMode = LC.val("fmt") === "ratio";
+    LC.out("curunit", ratioMode ? "ratio" : "%");
+    var exp = LC.num("exp"), cur = LC.num("cur");
+    var ws = ["w1", "w2", "w3", "w4"].map(LC.num).filter(function (x) { return isFinite(x) && x > 0; });
+    if (!ws.length || !isFinite(exp) || !isFinite(cur)) { LC.out("r_new", "—"); return; }
+    var avg = ws.reduce(function (a, b) { return a + b; }, 0) / ws.length;
+    var spread = Math.max.apply(null, ws) - Math.min.apply(null, ws);
+    var nv = cur * exp / avg;
+    var curRatio = ratioMode ? cur : cur / 100, newRatio = ratioMode ? nv : nv / 100;
+    LC.out("r_new", ratioMode ? nv.toFixed(3) : nv.toFixed(1) + " %");
+    LC.out("r_alt", ratioMode ? "= " + (nv * 100).toFixed(1) + " % in Cura" : "= " + (nv / 100).toFixed(3) + " as a ratio in Bambu / Orca / PrusaSlicer");
+    LC.out("r_avg", avg.toFixed(3) + " mm");
+    LC.out("r_spread", ws.length + " sides, spread " + spread.toFixed(2) + " mm");
+    var change = (newRatio / curRatio - 1) * 100;
+    LC.out("r_change", (change >= 0 ? "+" : "") + change.toFixed(1) + " %");
+    var msgs = [];
+    if (Math.abs(change) > 8) msgs.push("A change over 8% is unusual. Check e-steps first, make sure the cube really was a single wall, and that you measured mid-height.");
+    if (spread > 0.05) msgs.push("The four sides differ by " + spread.toFixed(2) + " mm — that's a lot. Uneven walls point to belt tension, frame squareness or a wobbly single wall rather than flow; the average is still usable but treat it as rough.");
+    LC.show("warn", msgs.length > 0); LC.html("warn", msgs.join("<br><br>"));
+  }
+  LC.bind("f", calc);
+})();
+</script>
+<!--ARTICLE-->
+<h2>The formula</h2>
+<div class="formula">new flow = current flow × line width set ÷ average measured wall</div>
+<p>The slicer assumes each wall line comes out exactly as wide as the line width setting. If the wall is thicker than that, the printer is pushing too much plastic and the flow comes down in proportion; thinner, and it goes up. Because it's a ratio, it works whether your slicer shows flow as 100% or 1.00.</p>
+
+<div class="example">
+<h3>Worked example</h3>
+<p>Cube printed at 0.45 mm line width, 100% flow. Walls measure 0.48, 0.47, 0.49 and 0.48 mm.</p>
+<ul>
+  <li>Average: (0.48 + 0.47 + 0.49 + 0.48) ÷ 4 = <strong>0.480 mm</strong></li>
+  <li>New flow: 100% × 0.45 ÷ 0.480 = <strong>93.8%</strong> — enter 94 in Cura, or 0.938 in Bambu Studio, OrcaSlicer or PrusaSlicer</li>
+</ul>
+</div>
+
+<h2>Printing the test cube</h2>
+<ol>
+  <li>Slice a 20 × 20 × 20 mm cube (any calibration cube model works, or add a plain cube in the slicer).</li>
+  <li>Set <strong>1 wall</strong>, <strong>0 top layers</strong>, <strong>0% infill</strong>. In Cura enable Spiralize Outer Contour; in PrusaSlicer/Orca/Bambu enable Spiral vase. Keep bottom layers — you want the base for stability.</li>
+  <li>Use the same line width, layer height, temperature and speed you normally print with. Flow is partly a temperature effect, so calibrate the profile you'll actually use.</li>
+  <li>Let it cool completely. Measure each wall with digital calipers about halfway up, squeezing gently — a plastic wall compresses. Take two readings per side if they disagree.</li>
+  <li>Enter the four readings above. Apply the new flow, reprint, and expect the walls to land within ±0.02 mm of the set width.</li>
+</ol>
+
+<h2>Where flow lives in each slicer</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Slicer</th><th>Setting</th><th>Form</th></tr></thead>
+<tbody>
+<tr><td>Bambu Studio / OrcaSlicer</td><td>Filament → Flow ratio</td><td>Ratio, e.g. 0.98</td></tr>
+<tr><td>PrusaSlicer / SuperSlicer</td><td>Filament Settings → Extrusion multiplier</td><td>Ratio, e.g. 0.95</td></tr>
+<tr><td>Cura</td><td>Material → Flow</td><td>Percent, e.g. 95</td></tr>
+<tr><td>Simplify3D</td><td>Extruder → Extrusion Multiplier</td><td>Ratio</td></tr>
+<tr><td>Marlin firmware (temporary)</td><td><code>M221 S95</code></td><td>Percent — but prefer the slicer, so it travels with the profile</td></tr>
+</tbody></table></div>
+<p>Set it in the <em>filament</em> profile, not the print profile. Flow is a property of the material and the temperature, and different spools of the same material can differ by a few percent.</p>
+
+<h2>Order of operations</h2>
+<p>Flow interacts with everything upstream of it. Calibrate in this order and each step stays fixed:</p>
+<ol>
+  <li><a href="/e-steps-calculator/">E-steps / rotation distance</a> — once per extruder, so the right length of filament is delivered.</li>
+  <li><strong>Flow</strong> — this page, once per material.</li>
+  <li>Temperature and retraction — with a <a href="/temp-tower-generator/">test tower</a>, per material.</li>
+  <li><a href="/shrinkage-compensation-calculator/">Dimensional accuracy</a> — scale and hole compensation, per material.</li>
+</ol>
+
+<h2>Limits of the single-wall method</h2>
+<p>A single 0.45 mm wall is thin and can bulge or lean as the print grows, so the measurement scatters more than the underlying flow does. That's why it's four sides averaged and measured mid-height. Two known corrections some people apply: Cura's line width includes the full rounded edge of the extrusion, while some flow tests assume a rectangular cross-section, which shifts results by a couple of percent; and printing the test at high speed will under-read if the hotend can't keep up (check the <a href="/max-volumetric-speed-calculator/">volumetric flow</a>). If two runs land within 1–2% of each other, stop — that's within the diameter tolerance of the filament itself.</p>

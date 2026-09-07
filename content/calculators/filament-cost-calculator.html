@@ -1,0 +1,149 @@
+{
+  "title": "Filament Cost Calculator",
+  "page_title": "Filament Cost Calculator – Cost per Gram, per Meter and per Print",
+  "description": "Work out filament cost per gram, per meter and per print from the spool price, with waste and failed-print allowances. PLA, PETG, ABS, TPU and more.",
+  "lede": "Enter what the spool cost and how much a print uses (your slicer tells you) and get the material cost per gram, per meter and for the whole print — with an honest allowance for waste and failed prints.",
+  "short": "Cost per gram, per meter and per print from the spool price, with waste and failure allowances.",
+  "category": "cost",
+  "order": 10,
+  "updated": "2026-09-07",
+  "related": ["3d-print-pricing-calculator", "filament-length-weight-calculator", "3d-printer-electricity-cost-calculator", "filament-remaining-calculator"],
+  "faq": [
+    {"q": "How much does 3D printer filament cost per gram?", "a": "Divide the spool price by its net weight. A 1 kg spool of PLA at $20 is 2 cents per gram, so a 50 g print costs about $1 in material. Budget PLA runs roughly $0.015–0.025/g, PETG and ABS $0.018–0.03/g, TPU $0.025–0.04/g, and carbon-fiber nylon $0.05–0.08/g."},
+    {"q": "How many meters of filament are in a 1 kg spool?", "a": "It depends on density and diameter. For 1.75 mm: PLA about 335 m, PETG about 327 m, ABS about 400 m, TPU about 344 m. For 2.85 mm PLA it is about 126 m. The calculator shows grams per meter for the material you pick."},
+    {"q": "Does the slicer's filament estimate include supports and brims?", "a": "Yes — the total in PrusaSlicer, OrcaSlicer, Bambu Studio and Cura includes supports, brims, skirts and purge/wipe towers. What it doesn't include is the purge line at the start of the print, filament you cut off when loading, and prints that fail partway. That's what the waste and failure-rate fields are for."},
+    {"q": "Why add a failure rate?", "a": "If one print in ten fails, every successful print effectively used 1/(1−0.10) = 111% of its material. The calculator divides by (1 − failure rate) so the cost you see is the real average, not the best case."},
+    {"q": "Does this include electricity and printer wear?", "a": "No, this page is material only. For the full cost of a print — power, machine depreciation, maintenance, your time and marketplace fees — use the 3D print pricing calculator."}
+  ]
+}
+<form id="f" class="calc-form" novalidate>
+  <div class="fields">
+    <div class="field">
+      <label for="price">Spool price</label>
+      <div class="inwrap prefix"><span class="pre" data-cur>$</span><input type="number" id="price" value="20" min="0" step="0.01" inputmode="decimal"></div>
+    </div>
+    <div class="field">
+      <label for="spool">Filament on the spool (net)</label>
+      <div class="inwrap"><input type="number" id="spool" value="1000" min="1" step="1" inputmode="decimal"><span class="unit">g</span></div>
+      <p class="hint">The filament weight on the label, not the spool's gross weight.</p>
+    </div>
+    <div class="field">
+      <label for="mat">Material</label>
+      <select id="mat">
+        <option value="1.24" selected>PLA (1.24 g/cm³)</option>
+        <option value="1.27">PETG (1.27 g/cm³)</option>
+        <option value="1.04">ABS (1.04 g/cm³)</option>
+        <option value="1.07">ASA (1.07 g/cm³)</option>
+        <option value="1.21">TPU (1.21 g/cm³)</option>
+        <option value="1.20">PC (1.20 g/cm³)</option>
+        <option value="1.14">Nylon PA6 (1.14 g/cm³)</option>
+        <option value="1.01">Nylon PA12 (1.01 g/cm³)</option>
+        <option value="1.29">PLA-CF (1.29 g/cm³)</option>
+        <option value="1.30">PETG-CF (1.30 g/cm³)</option>
+        <option value="1.04">HIPS (1.04 g/cm³)</option>
+        <option value="1.23">PVA (1.23 g/cm³)</option>
+        <option value="0.90">PP (0.90 g/cm³)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="dia">Filament diameter</label>
+      <select id="dia"><option value="1.75" selected>1.75 mm</option><option value="2.85">2.85 mm</option></select>
+    </div>
+    <div class="field">
+      <label for="used">Filament used by the print</label>
+      <div class="inwrap"><input type="number" id="used" value="50" min="0" step="0.1" inputmode="decimal"><span class="unit" id="usedunit">g</span></div>
+    </div>
+    <div class="field">
+      <label for="unit">Entered as</label>
+      <select id="unit"><option value="g" selected>grams</option><option value="m">meters</option></select>
+      <p class="hint">Slicers show both; grams is more accurate.</p>
+    </div>
+    <div class="field">
+      <label for="waste">Extra waste</label>
+      <div class="inwrap"><input type="number" id="waste" value="5" min="0" max="100" step="1" inputmode="decimal"><span class="unit">%</span></div>
+      <p class="hint">Purge lines, loading, trimmed ends. 3–10% is typical.</p>
+    </div>
+    <div class="field">
+      <label for="fail">Failure rate</label>
+      <div class="inwrap"><input type="number" id="fail" value="0" min="0" max="90" step="1" inputmode="decimal"><span class="unit">%</span></div>
+      <p class="hint">Share of prints that fail and get reprinted.</p>
+    </div>
+  </div>
+
+  <div class="results">
+    <div class="result primary"><div class="l">Material cost of this print</div><div class="v" id="r_cost">—</div><div class="s" id="r_grams"></div></div>
+    <div class="result"><div class="l">Including waste &amp; failures</div><div class="v" id="r_adj">—</div></div>
+    <div class="result"><div class="l">Cost per gram</div><div class="v" id="r_perg">—</div></div>
+    <div class="result"><div class="l">Cost per meter</div><div class="v" id="r_perm">—</div><div class="s" id="r_gpm"></div></div>
+  </div>
+  <div class="actions">
+    <button type="button" class="btn-ghost" data-reset>Reset</button>
+    <span id="cur"></span>
+  </div>
+</form>
+<script>
+(function () {
+  function calc() {
+    var price = LC.num("price"), spool = LC.num("spool");
+    var dens = parseFloat(LC.val("mat")), d = parseFloat(LC.val("dia"));
+    var used = LC.num("used"), unit = LC.val("unit");
+    var waste = LC.num("waste") || 0, fail = Math.min(LC.num("fail") || 0, 90);
+    LC.out("usedunit", unit === "m" ? "m" : "g");
+    var gpm = Math.PI * Math.pow(d / 2, 2) * dens;        // grams per meter
+    var perG = price / spool, perM = perG * gpm;
+    var grams = unit === "m" ? used * gpm : used;
+    var cost = grams * perG;
+    var adj = cost * (1 + waste / 100) / (1 - fail / 100);
+    LC.out("r_cost", LC.money(cost));
+    LC.out("r_grams", isFinite(grams) ? LC.fmt(grams, 1) + " g ≈ " + LC.fmt(grams / gpm, 1) + " m of filament" : "");
+    LC.out("r_adj", LC.money(adj));
+    LC.out("r_perg", LC.money(perG, 4));
+    LC.out("r_perm", LC.money(perM, 3));
+    LC.out("r_gpm", isFinite(gpm) ? LC.fmt(gpm, 2) + " g per meter · " + LC.fmt(1000 / gpm, 0) + " m per kg" : "");
+  }
+  LC.currencyPicker("cur");
+  LC.bind("f", calc);
+})();
+</script>
+<!--ARTICLE-->
+<h2>How the filament cost is calculated</h2>
+<p>Everything comes from one number: what you paid per gram of plastic.</p>
+<div class="formula">cost per gram = spool price ÷ net filament weight<br>print cost = grams used × cost per gram<br>real cost = print cost × (1 + waste%) ÷ (1 − failure%)</div>
+<p>If you only know the length a print uses, the calculator converts meters to grams using the filament's cross-section and density:</p>
+<div class="formula">grams per meter = π × (diameter ÷ 2)² × density<br>1.75 mm PLA: π × 0.875² × 1.24 ≈ 2.98 g/m</div>
+<p>That's why PLA works out to roughly 3 g per meter and a 1 kg spool holds about 335 m. Denser materials like PETG pack slightly more grams into each meter; lighter ones like ABS and polypropylene hold more meters per kilogram.</p>
+
+<div class="example">
+<h3>Worked example</h3>
+<p>A 1 kg spool of PLA cost $22. Your slicer says a print uses 65 g.</p>
+<ul>
+  <li>Cost per gram: $22 ÷ 1000 g = <strong>$0.022</strong></li>
+  <li>Print material: 65 g × $0.022 = <strong>$1.43</strong></li>
+  <li>With 5% waste and a 5% failure rate: $1.43 × 1.05 ÷ 0.95 = <strong>$1.58</strong></li>
+</ul>
+<p>Fifteen cents doesn't sound like much on one print. Across a hundred prints it's the difference between a spool lasting the month or not.</p>
+</div>
+
+<h2>Getting the inputs right</h2>
+<h3>Use the net weight, not the gross</h3>
+<p>A "1 kg" spool has 1,000 g of filament wound on a spool that itself weighs 150–250 g. The label weight is the filament. If you weigh a full spool on a kitchen scale you'll see 1,150–1,250 g — don't type that in, or every cost will come out 15–25% low. To work out what's left on a part-used spool, use the <a href="/filament-remaining-calculator/">filament remaining calculator</a>, which subtracts the spool's tare weight for you.</p>
+<h3>Where to find the grams a print uses</h3>
+<p>Every mainstream slicer reports it after slicing: PrusaSlicer and OrcaSlicer in the right-hand sidebar under "Filament", Bambu Studio in the preview's summary, Cura in the bottom-right corner next to the time estimate. The figure includes supports, brims and purge towers. It does not include the purge line most start G-code draws before the print, which is why a few percent of waste is realistic even when nothing goes wrong.</p>
+<h3>What counts as waste</h3>
+<p>Purge lines, the bit you snip off when loading, filament ground up by a jam, the skirt you didn't count, and the ten first-layer attempts before it stuck. Five percent is a fair default for a well-tuned printer; a machine still being dialled in is nearer ten.</p>
+
+<h2>Typical filament prices</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Material</th><th>Typical price per kg</th><th>Cost per gram</th><th>Meters per kg (1.75 mm)</th></tr></thead>
+<tbody>
+<tr><td>PLA</td><td>$15 – $25</td><td>$0.015 – $0.025</td><td>≈ 335 m</td></tr>
+<tr><td>PETG</td><td>$18 – $28</td><td>$0.018 – $0.028</td><td>≈ 327 m</td></tr>
+<tr><td>ABS / ASA</td><td>$18 – $28</td><td>$0.018 – $0.028</td><td>≈ 400 / 389 m</td></tr>
+<tr><td>TPU (flexible)</td><td>$25 – $40</td><td>$0.025 – $0.040</td><td>≈ 344 m</td></tr>
+<tr><td>Polycarbonate</td><td>$35 – $55</td><td>$0.035 – $0.055</td><td>≈ 346 m</td></tr>
+<tr><td>Nylon / PA-CF</td><td>$40 – $80</td><td>$0.040 – $0.080</td><td>≈ 365 m</td></tr>
+</tbody></table></div>
+<p>Prices are typical retail for 1 kg spools of mainstream brands and move with sales and bulk deals; treat them as a sanity check for your own number, not a quote.</p>
+
+<h2>What this number doesn't cover</h2>
+<p>Material is usually the smallest part of what a print really costs. A six-hour print on a $400 printer with a 3,000-hour life has burned $0.80 of the machine, a few cents of electricity, and however much of your time it took to slice, remove and clean up. If you're pricing prints to sell, put the cost per gram from this page into the <a href="/3d-print-pricing-calculator/">pricing calculator</a> and let it add the rest.</p>

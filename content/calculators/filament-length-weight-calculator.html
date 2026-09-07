@@ -1,0 +1,110 @@
+{
+  "title": "Filament Length to Weight Calculator",
+  "page_title": "Filament Length ↔ Weight ↔ Volume Converter – Meters, Grams and cm³ by Material",
+  "description": "Convert filament length to weight, weight to length, or either to volume for PLA, PETG, ABS, TPU, nylon and more at 1.75 or 2.85 mm. With a g/m table.",
+  "lede": "Enter a length, a weight or a volume and get the other two for any material and diameter. The table below the calculator lists grams per meter and meters per kilogram for every common filament.",
+  "short": "Meters ⇄ grams ⇄ cm³ for any filament and diameter, plus a grams-per-meter reference table.",
+  "category": "filament",
+  "order": 20,
+  "updated": "2026-09-07",
+  "related": ["filament-remaining-calculator", "filament-cost-calculator", "print-time-estimator", "filament-settings-reference"],
+  "faq": [
+    {"q": "How much does 1 meter of filament weigh?", "a": "For 1.75 mm filament: PLA about 2.98 g, PETG 3.05 g, ABS 2.50 g, ASA 2.57 g, TPU 2.91 g, nylon 2.74 g. For 2.85 mm multiply by about 2.65 — PLA is 7.91 g per meter. The formula is π × (diameter ÷ 2)² × density."},
+    {"q": "How many meters of filament are in 1 kg?", "a": "1.75 mm: PLA about 335 m, PETG 327 m, ABS 400 m, ASA 389 m, TPU 344 m, polycarbonate 346 m, nylon 365 m. 2.85 mm: PLA about 126 m, PETG 123 m, ABS 151 m. Lower-density plastics give more meters per kilogram."},
+    {"q": "How do I convert filament weight to volume?", "a": "Volume (cm³) = grams ÷ density. 100 g of PLA at 1.24 g/cm³ is 80.6 cm³. Slicers report both, and volume is what actually gets extruded — two prints using the same volume in different materials will weigh different amounts."},
+    {"q": "Why does my slicer's length not match the weight?", "a": "The slicer converts with the density and diameter in the filament profile. If either is wrong for your spool — a generic 1.24 g/cm³ for a filled or foaming filament, say — the length is right and the weight is off, or vice versa. Set the density from the spool's data sheet."},
+    {"q": "What's the density of PLA filament?", "a": "About 1.24 g/cm³ for standard PLA. Variants differ: PLA+ and silk PLA are 1.20–1.27, wood-filled around 1.15–1.28, carbon-fiber PLA 1.25–1.32, and lightweight foaming LW-PLA as low as 0.6 after expansion. Check the manufacturer's spec sheet when it matters."}
+  ]
+}
+<form id="f" class="calc-form" novalidate>
+  <div class="fields">
+    <div class="field">
+      <label for="mat">Material</label>
+      <select id="mat">
+        <option value="1.24" selected>PLA</option><option value="1.27">PETG</option><option value="1.04">ABS</option><option value="1.07">ASA</option>
+        <option value="1.21">TPU</option><option value="1.20">PC</option><option value="1.14">Nylon PA6</option><option value="1.01">Nylon PA12</option>
+        <option value="1.29">PLA-CF</option><option value="1.30">PETG-CF</option><option value="1.04">HIPS</option><option value="1.23">PVA</option>
+        <option value="0.90">PP</option><option value="custom">Custom density</option>
+      </select>
+    </div>
+    <div class="field"><label for="dens">Density</label><div class="inwrap"><input type="number" id="dens" value="1.24" min="0.1" step="0.01" inputmode="decimal"><span class="unit">g/cm³</span></div></div>
+    <div class="field"><label for="dia">Diameter</label><select id="dia"><option value="1.75" selected>1.75 mm</option><option value="2.85">2.85 mm</option></select></div>
+    <div class="field">
+      <label for="known">I know the</label>
+      <select id="known"><option value="g" selected>weight (grams)</option><option value="m">length (meters)</option><option value="v">volume (cm³)</option></select>
+    </div>
+    <div class="field"><label for="val">Value</label><div class="inwrap"><input type="number" id="val" value="100" min="0" step="any" inputmode="decimal"><span class="unit" id="valunit">g</span></div></div>
+    <div class="field"><label for="ppk">Price per kg (optional)</label><div class="inwrap prefix"><span class="pre" data-cur>$</span><input type="number" id="ppk" value="" placeholder="e.g. 22" min="0" step="0.01" inputmode="decimal"></div></div>
+  </div>
+  <div class="results">
+    <div class="result"><div class="l">Weight</div><div class="v" id="r_g">—</div></div>
+    <div class="result"><div class="l">Length</div><div class="v" id="r_m">—</div></div>
+    <div class="result"><div class="l">Volume</div><div class="v" id="r_v">—</div></div>
+    <div class="result"><div class="l">This material</div><div class="v" id="r_gpm">—</div><div class="s" id="r_mpk"></div></div>
+    <div class="result" id="costbox" hidden><div class="l">Cost</div><div class="v" id="r_cost">—</div><div class="s" id="r_costm"></div></div>
+  </div>
+  <div class="actions"><button type="button" class="btn-ghost" data-reset>Reset</button><span id="cur"></span></div>
+</form>
+<script>
+(function () {
+  LC.el("mat").addEventListener("change", function () { if (this.value !== "custom") LC.el("dens").value = this.value; });
+  function calc() {
+    var dens = LC.num("dens"), d = parseFloat(LC.val("dia")), known = LC.val("known"), v = LC.num("val"), ppk = LC.num("ppk");
+    LC.out("valunit", known === "g" ? "g" : known === "m" ? "m" : "cm³");
+    var areaCm2 = Math.PI * Math.pow(d / 20, 2);           // cross-section in cm²
+    var gpm = areaCm2 * 100 * dens;                          // grams per meter
+    var g, m, vol;
+    if (known === "g") { g = v; vol = g / dens; m = g / gpm; }
+    else if (known === "m") { m = v; g = m * gpm; vol = g / dens; }
+    else { vol = v; g = vol * dens; m = g / gpm; }
+    LC.out("r_g", isFinite(g) ? LC.fmt(g, 1) + " g" : "—");
+    LC.out("r_m", isFinite(m) ? LC.fmt(m, 2) + " m" : "—");
+    LC.out("r_v", isFinite(vol) ? LC.fmt(vol, 2) + " cm³" : "—");
+    LC.out("r_gpm", isFinite(gpm) ? LC.fmt(gpm, 3) + " g/m" : "—");
+    LC.out("r_mpk", isFinite(gpm) ? LC.fmt(1000 / gpm, 0) + " m per kg · " + LC.fmt(1 / dens, 3) + " cm³ per g" : "");
+    var hasPrice = isFinite(ppk) && ppk > 0;
+    LC.show("costbox", hasPrice);
+    if (hasPrice) { LC.out("r_cost", LC.money(g / 1000 * ppk)); LC.out("r_costm", LC.money(gpm / 1000 * ppk, 3) + " per meter"); }
+  }
+  LC.currencyPicker("cur");
+  LC.bind("f", calc);
+})();
+</script>
+<!--ARTICLE-->
+<h2>The formulas</h2>
+<div class="formula">grams per meter = π × (diameter ÷ 2)² × density   (diameter in cm → g/m with ×100)<br>weight (g) = length (m) × grams per meter<br>volume (cm³) = weight (g) ÷ density (g/cm³)</div>
+<p>Filament is a cylinder, so its volume is cross-section times length, and its weight is volume times density. The cross-section of 1.75 mm filament is 2.405 mm² (0.02405 cm²); of 2.85 mm, 6.379 mm². That 2.65× ratio is why 2.85 mm spools look so short.</p>
+
+<h2>Reference: grams per meter and meters per kilogram</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Material</th><th>Density (g/cm³)</th><th>1.75 mm g/m</th><th>1.75 mm m/kg</th><th>2.85 mm g/m</th><th>2.85 mm m/kg</th></tr></thead>
+<tbody>
+<tr><td>PLA</td><td>1.24</td><td>2.98</td><td>335</td><td>7.91</td><td>126</td></tr>
+<tr><td>PETG</td><td>1.27</td><td>3.05</td><td>327</td><td>8.10</td><td>123</td></tr>
+<tr><td>ABS</td><td>1.04</td><td>2.50</td><td>400</td><td>6.63</td><td>151</td></tr>
+<tr><td>ASA</td><td>1.07</td><td>2.57</td><td>389</td><td>6.83</td><td>147</td></tr>
+<tr><td>TPU (95A)</td><td>1.21</td><td>2.91</td><td>344</td><td>7.72</td><td>130</td></tr>
+<tr><td>Polycarbonate</td><td>1.20</td><td>2.89</td><td>346</td><td>7.66</td><td>131</td></tr>
+<tr><td>Nylon PA6</td><td>1.14</td><td>2.74</td><td>365</td><td>7.27</td><td>138</td></tr>
+<tr><td>Nylon PA12</td><td>1.01</td><td>2.43</td><td>412</td><td>6.44</td><td>155</td></tr>
+<tr><td>PLA-CF</td><td>1.29</td><td>3.10</td><td>322</td><td>8.23</td><td>122</td></tr>
+<tr><td>PETG-CF</td><td>1.30</td><td>3.13</td><td>320</td><td>8.29</td><td>121</td></tr>
+<tr><td>HIPS</td><td>1.04</td><td>2.50</td><td>400</td><td>6.63</td><td>151</td></tr>
+<tr><td>PVA</td><td>1.23</td><td>2.96</td><td>338</td><td>7.85</td><td>127</td></tr>
+<tr><td>Polypropylene</td><td>0.90</td><td>2.16</td><td>462</td><td>5.74</td><td>174</td></tr>
+</tbody></table></div>
+<p>Densities are typical for unfilled, non-foaming grades; the calculator's custom density field takes whatever your spool's data sheet says. Values are rounded to two decimals.</p>
+
+<div class="example">
+<h3>Worked example</h3>
+<p>A print needs 42 m of 1.75 mm PETG. How much does it weigh and how much space does it take?</p>
+<ul>
+  <li>Weight: 42 × 3.05 = <strong>128 g</strong></li>
+  <li>Volume: 128 ÷ 1.27 = <strong>101 cm³</strong></li>
+  <li>At $24/kg the material is 0.128 × 24 = <strong>$3.07</strong></li>
+</ul>
+</div>
+
+<h2>When density matters</h2>
+<p>Most of the time a generic density is fine, but three cases bite. <strong>Filled filaments</strong> (carbon fiber, glass, wood, metal) are denser — metal-filled PLA can be 2.0–4.0 g/cm³, so a "1 kg" spool holds a fraction of the usual length. <strong>Foaming lightweight PLA</strong> is the opposite: about 1.2 g/cm³ on the spool but 0.5–0.6 after it expands in the hotend, so slicer weight estimates are only right if the profile's density matches what's on the reel. And <strong>flexible filaments</strong> vary between makers (1.15–1.25). If a spool's weight and the slicer's length disagree by more than a few percent, the density in the profile is the first suspect.</p>
+<p>To see what's actually left on a partly used spool, use the <a href="/filament-remaining-calculator/">filament remaining calculator</a>; to turn a weight into a cost, the <a href="/filament-cost-calculator/">filament cost calculator</a>.</p>

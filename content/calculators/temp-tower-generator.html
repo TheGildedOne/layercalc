@@ -1,0 +1,297 @@
+{
+  "title": "Temp Tower & Retraction Tower G-code Generator",
+  "page_title": "Temperature Tower & Retraction Test G-code Generator – Free, No Slicer Needed",
+  "description": "Generate a ready-to-print temperature tower or retraction test as G-code in your browser. Set bed size, nozzle, start value and step; download and print.",
+  "lede": "Set your printer's bed, nozzle and layer height, choose what to test — temperature, retraction distance or retraction speed — and download a G-code file that changes the value every few millimeters. No slicer plugins, no post-processing scripts.",
+  "short": "Download a ready-to-print temperature or retraction test tower as G-code, generated for your printer.",
+  "category": "calibration",
+  "order": 70,
+  "updated": "2026-09-07",
+  "related": ["flow-rate-calculator", "e-steps-calculator", "max-volumetric-speed-calculator", "filament-settings-reference"],
+  "faq": [
+    {"q": "How does a temperature tower work?", "a": "It's a tall print divided into sections, each printed at a different nozzle temperature. Comparing the sections shows where layer bonding, stringing, overhangs and surface finish are best for that filament. This generator prints two thin pillars with a gap between them, so each section also shows how much the filament strings when the nozzle travels across the gap."},
+    {"q": "What temperature range should I test?", "a": "Start at the top of the manufacturer's range and step down 5 °C per section: PLA 230 → 200, PETG 250 → 220, ABS/ASA 260 → 230, TPU 235 → 205. Six sections of 5 °C covers 25 degrees. Print the hottest section first — at the bottom — so bed adhesion gets the strongest bond."},
+    {"q": "What retraction settings should I test?", "a": "Direct drive: distance 0.2 to 1.5 mm in 0.2–0.3 mm steps, speed 20–45 mm/s. Bowden: distance 2 to 7 mm in 1 mm steps, speed 25–60 mm/s. Test distance first at a fixed speed, then speed at the best distance. Find the lowest values that eliminate strings between the pillars; more retraction than needed causes clogs and blobs."},
+    {"q": "Will this work on my printer?", "a": "It produces standard G-code (G0/G1, M104, M140, M106, M83) that Marlin, Klipper, RepRapFirmware and their derivatives all accept. The built-in start sequence homes and heats; if your printer needs a custom start (Klipper PRINT_START macros, purge lines, bed mesh loading), paste it in the custom start G-code box. Always preview the file in your slicer or a G-code viewer before printing."},
+    {"q": "Why not just use a slicer plugin?", "a": "Plugins are slicer-specific, break between versions, and need post-processing scripts that many people find fiddly. A generated file is the same test every time, works with any slicer or none, and you can keep it and reprint it for every new spool."}
+  ]
+}
+<form id="f" class="calc-form" novalidate>
+  <div class="seg" role="radiogroup" aria-label="Test type">
+    <label><input type="radio" name="test" id="test_temp" value="temp" checked><span>Temperature tower</span></label>
+    <label><input type="radio" name="test" id="test_rdist" value="rdist"><span>Retraction distance</span></label>
+    <label><input type="radio" name="test" id="test_rspeed" value="rspeed"><span>Retraction speed</span></label>
+  </div>
+  <fieldset class="group">
+    <legend>Printer</legend>
+    <div class="fields">
+      <div class="field"><label for="bedpreset">Bed preset</label>
+        <select id="bedpreset">
+          <option value="" selected>Custom</option>
+          <option value="220,220,0">Ender 3 / V2 / S1 / V3 (220 × 220)</option>
+          <option value="220,220,0">Creality K1 / K1C, Sovol SV06, Kobra 2 (220 × 220)</option>
+          <option value="250,210,0">Prusa MK3S / MK4 (250 × 210)</option>
+          <option value="180,180,0">Prusa Mini, Bambu A1 mini (180 × 180)</option>
+          <option value="256,256,0">Bambu A1 / P1P / P1S / X1C (256 × 256)</option>
+          <option value="225,225,0">Elegoo Neptune 3 / 4 (225 × 225)</option>
+          <option value="300,300,0">Voron 2.4 300, K1 Max (300 × 300)</option>
+          <option value="350,350,0">Voron 2.4 350, Ender 5 Plus (350 × 350)</option>
+          <option value="260,260,1">Delta, 260 mm diameter, origin at center</option>
+        </select></div>
+      <div class="field"><label for="bedx">Bed X</label><div class="inwrap"><input type="number" id="bedx" value="220" min="50" step="1" inputmode="decimal"><span class="unit">mm</span></div></div>
+      <div class="field"><label for="bedy">Bed Y</label><div class="inwrap"><input type="number" id="bedy" value="220" min="50" step="1" inputmode="decimal"><span class="unit">mm</span></div></div>
+      <div class="field"><label class="check" for="center" style="margin-top:22px"><input type="checkbox" id="center"> Origin at bed center (deltas)</label></div>
+      <div class="field"><label for="noz">Nozzle</label><div class="inwrap"><input type="number" id="noz" value="0.4" min="0.1" step="0.05" inputmode="decimal"><span class="unit">mm</span></div></div>
+      <div class="field"><label for="fd">Filament diameter</label><select id="fd"><option value="1.75" selected>1.75 mm</option><option value="2.85">2.85 mm</option></select></div>
+    </div>
+  </fieldset>
+  <fieldset class="group">
+    <legend>Print settings</legend>
+    <div class="fields">
+      <div class="field"><label for="lh">Layer height</label><div class="inwrap"><input type="number" id="lh" value="0.2" min="0.05" step="0.01" inputmode="decimal"><span class="unit">mm</span></div></div>
+      <div class="field"><label for="lw">Line width</label><div class="inwrap"><input type="number" id="lw" value="0.45" min="0.1" step="0.01" inputmode="decimal"><span class="unit">mm</span></div></div>
+      <div class="field"><label for="speed">Print speed</label><div class="inwrap"><input type="number" id="speed" value="40" min="5" step="5" inputmode="decimal"><span class="unit">mm/s</span></div><p class="hint">Keep it modest so the test isn't a speed test.</p></div>
+      <div class="field"><label for="travel">Travel speed</label><div class="inwrap"><input type="number" id="travel" value="150" min="10" step="10" inputmode="decimal"><span class="unit">mm/s</span></div></div>
+      <div class="field"><label for="temp" id="templabel">Nozzle temperature</label><div class="inwrap"><input type="number" id="temp" value="215" min="150" max="350" step="5" inputmode="decimal"><span class="unit">°C</span></div><p class="hint" id="temphint">Used for retraction tests.</p></div>
+      <div class="field"><label for="bed">Bed temperature</label><div class="inwrap"><input type="number" id="bed" value="60" min="0" max="130" step="5" inputmode="decimal"><span class="unit">°C</span></div></div>
+      <div class="field"><label for="fan">Part cooling fan</label><div class="inwrap"><input type="number" id="fan" value="100" min="0" max="100" step="5" inputmode="decimal"><span class="unit">%</span></div><p class="hint">Off for layer 1, on from layer 2.</p></div>
+      <div class="field"><label for="ret" id="retlabel">Retraction distance</label><div class="inwrap"><input type="number" id="ret" value="0.8" min="0" step="0.1" inputmode="decimal"><span class="unit">mm</span></div><p class="hint">Direct drive ≈0.5–1.2, Bowden ≈4–6.</p></div>
+      <div class="field"><label for="retspd" id="retspdlabel">Retraction speed</label><div class="inwrap"><input type="number" id="retspd" value="35" min="1" step="5" inputmode="decimal"><span class="unit">mm/s</span></div></div>
+    </div>
+  </fieldset>
+  <fieldset class="group">
+    <legend>Test sequence</legend>
+    <div class="fields">
+      <div class="field"><label for="start" id="startlabel">Start value (bottom section)</label><div class="inwrap"><input type="number" id="start" value="230" step="any" inputmode="decimal"><span class="unit" id="startunit">°C</span></div></div>
+      <div class="field"><label for="step">Step per section</label><div class="inwrap"><input type="number" id="step" value="-5" step="any" inputmode="decimal"><span class="unit" id="stepunit">°C</span></div><p class="hint">Negative to go down the tower.</p></div>
+      <div class="field"><label for="n">Sections</label><div class="inwrap"><input type="number" id="n" value="6" min="2" max="15" step="1" inputmode="numeric"><span class="unit">sections</span></div></div>
+      <div class="field"><label for="sh">Section height</label><div class="inwrap"><input type="number" id="sh" value="10" min="3" max="30" step="1" inputmode="decimal"><span class="unit">mm</span></div></div>
+      <div class="field"><label for="gap">Gap between pillars</label><div class="inwrap"><input type="number" id="gap" value="40" min="10" max="150" step="5" inputmode="decimal"><span class="unit">mm</span></div><p class="hint">Longer gap shows stringing better.</p></div>
+      <div class="field"><label for="size">Pillar size</label><div class="inwrap"><input type="number" id="size" value="10" min="4" max="30" step="1" inputmode="decimal"><span class="unit">mm</span></div></div>
+    </div>
+    <div class="field" style="margin-top:14px"><label for="custom">Custom start G-code (optional — replaces the built-in homing and heating)</label>
+      <textarea id="custom" placeholder="e.g. Klipper:  PRINT_START EXTRUDER={hotend} BED={bed}&#10;Placeholders: {hotend} {bed}"></textarea>
+      <p class="hint">The generated file always sets M83 (relative extrusion) after your start code. Your macro must home and heat.</p>
+    </div>
+  </fieldset>
+  <div class="results">
+    <div class="result primary"><div class="l">Tower</div><div class="v" id="r_summary">—</div><div class="s" id="r_detail"></div></div>
+  </div>
+  <div class="table-wrap breakdown"><table><thead><tr><th>Section (from bottom)</th><th>Height</th><th id="valhead">Value</th></tr></thead><tbody id="rows"></tbody></table></div>
+  <div id="warn" class="warn-box" hidden></div>
+  <div class="actions">
+    <button type="button" class="btn" id="dl">Download .gcode</button>
+    <button type="button" class="btn-ghost" id="preview">Show G-code preview</button>
+    <button type="button" class="btn-ghost" data-reset>Reset</button>
+  </div>
+  <pre class="gcode" id="gpre" hidden></pre>
+  <p class="note">Always open the file in your slicer's preview or a G-code viewer before printing. The generator is generic; it can't know your printer's quirks.</p>
+</form>
+<script>
+(function () {
+  var LABELS = {
+    temp:   { start: "Start temperature (bottom section)", unit: "°C", head: "Nozzle temperature", defaults: [230, -5], templabel: "Nozzle temperature (unused — set by sections)" },
+    rdist:  { start: "Start retraction distance", unit: "mm", head: "Retraction distance", defaults: [0.2, 0.2], templabel: "Nozzle temperature" },
+    rspeed: { start: "Start retraction speed", unit: "mm/s", head: "Retraction speed", defaults: [15, 10], templabel: "Nozzle temperature" }
+  };
+  var lastTest = null, gcode = "", filename = "tower.gcode";
+  function num(x, d) {
+    var s = (Math.round(x * 1000) / 1000).toFixed(d == null ? 3 : d);
+    return s.indexOf(".") >= 0 ? s.replace(/0+$/, "").replace(/\.$/, "") : s;
+  }
+
+  LC.el("bedpreset").addEventListener("change", function () {
+    if (!this.value) return;
+    var p = this.value.split(",");
+    LC.el("bedx").value = p[0]; LC.el("bedy").value = p[1]; LC.el("center").checked = p[2] === "1";
+  });
+  var radios = document.getElementsByName("test");
+  for (var i = 0; i < radios.length; i++) radios[i].addEventListener("change", function () {
+    var L = LABELS[this.value];
+    LC.el("start").value = L.defaults[0]; LC.el("step").value = L.defaults[1];
+  });
+
+  function testType() { for (var i = 0; i < radios.length; i++) if (radios[i].checked) return radios[i].value; return "temp"; }
+
+  function generate() {
+    var test = testType(), L = LABELS[test];
+    LC.out("startlabel", L.start); LC.out("startunit", L.unit); LC.out("stepunit", L.unit); LC.out("valhead", L.head);
+    LC.out("templabel", L.templabel);
+    LC.out("temphint", test === "temp" ? "Each section sets its own temperature." : "Used for the whole retraction test.");
+    var bedx = LC.num("bedx"), bedy = LC.num("bedy"), center = LC.checked("center");
+    var noz = LC.num("noz"), fd = parseFloat(LC.val("fd")), lh = LC.num("lh"), lw = LC.num("lw");
+    var speed = LC.num("speed"), travel = LC.num("travel"), temp = LC.num("temp"), bed = LC.num("bed"), fan = LC.num("fan");
+    var retBase = LC.num("ret"), retSpdBase = LC.num("retspd");
+    var start = LC.num("start"), step = LC.num("step"), n = Math.round(LC.num("n")), sh = LC.num("sh"), gap = LC.num("gap"), size = LC.num("size");
+    var custom = LC.val("custom").trim();
+    var walls = 2, brimLoops = 5;
+    var warns = [];
+    if (!(n >= 2 && n <= 15)) { n = Math.min(15, Math.max(2, n || 6)); }
+    if (!(lh > 0 && lw > 0 && fd > 0 && speed > 0)) { LC.out("r_summary", "—"); return; }
+    if (lh > noz * 0.8) warns.push("Layer height is over 80% of the nozzle diameter.");
+    var footprint = gap + size + 2 * brimLoops * lw;
+    if (footprint > Math.min(bedx, bedy) - 10) warns.push("The two pillars plus brim need " + num(footprint, 0) + " mm — too wide for the bed. Reduce the gap.");
+
+    var values = [];
+    for (var s = 0; s < n; s++) values.push(start + s * step);
+    if (test === "temp" && (Math.min.apply(null, values) < 150 || Math.max.apply(null, values) > 320)) warns.push("Temperatures outside 150–320 °C — check start and step.");
+    if (test !== "temp" && Math.min.apply(null, values) < 0) warns.push("Negative retraction values — check start and step.");
+
+    var fa = Math.PI * Math.pow(fd / 2, 2);
+    var ePerMm = (lw * lh - lh * lh * (1 - Math.PI / 4)) / fa;
+    var cx = center ? 0 : bedx / 2, cy = center ? 0 : bedy / 2;
+    var pillars = [[cx - gap / 2, cy], [cx + gap / 2, cy]];
+    var totalH = n * sh, layers = Math.round(totalH / lh);
+    var t0 = test === "temp" ? values[0] : temp;
+    var F = { print: Math.round(speed * 60), first: Math.round(Math.min(speed, 25) * 60), travel: Math.round(travel * 60) };
+
+    var g = [];
+    g.push("; LayerCalc " + (test === "temp" ? "temperature tower" : test === "rdist" ? "retraction distance tower" : "retraction speed tower"));
+    g.push("; generated " + new Date().toISOString().slice(0, 10) + " at layercalc.com/temp-tower-generator/");
+    g.push("; nozzle " + noz + "mm, filament " + fd + "mm, layer " + lh + "mm, line " + lw + "mm, " + n + " sections x " + sh + "mm");
+    values.forEach(function (v, i) { g.push("; section " + (i + 1) + " (" + num(i * sh, 1) + "-" + num((i + 1) * sh, 1) + " mm): " + num(v, 2) + " " + L.unit); });
+    g.push("; two " + size + "mm pillars, " + gap + "mm apart, " + walls + " walls, " + brimLoops + "-loop brim");
+    g.push("");
+    if (custom) {
+      g.push("; --- custom start G-code ---");
+      g.push(custom.replace(/\{hotend\}/g, t0).replace(/\{bed\}/g, bed).replace(/\{first_temp\}/g, t0));
+      g.push("; --- end custom start ---");
+    } else {
+      g.push("M140 S" + bed + " ; bed heat");
+      g.push("M104 S" + t0 + " ; nozzle heat");
+      g.push("G28 ; home");
+      g.push("M190 S" + bed);
+      g.push("M109 S" + t0);
+    }
+    g.push("G21 ; mm");
+    g.push("G90 ; absolute XY");
+    g.push("M83 ; relative extrusion");
+    g.push("M107");
+    g.push("G92 E0");
+    g.push("G1 Z5 F" + F.travel);
+
+    var lastX = null, lastY = null, retracted = false;
+    var curRet = retBase, curRetSpd = retSpdBase;
+
+    function travelTo(x, y, z) {
+      var dist = lastX == null ? 999 : Math.hypot(x - lastX, y - lastY);
+      var doRet = dist > 3 && curRet > 0;
+      if (doRet) g.push("G1 E-" + num(curRet) + " F" + Math.round(curRetSpd * 60));
+      g.push("G0 X" + num(x) + " Y" + num(y) + (z != null ? " Z" + num(z) : "") + " F" + F.travel);
+      if (doRet) g.push("G1 E" + num(curRet) + " F" + Math.round(curRetSpd * 60));
+      lastX = x; lastY = y;
+    }
+    function lineTo(x, y, f) {
+      var len = Math.hypot(x - lastX, y - lastY);
+      g.push("G1 X" + num(x) + " Y" + num(y) + " E" + num(len * ePerMm, 5) + " F" + f);
+      lastX = x; lastY = y;
+    }
+    function square(px, py, half, f) {
+      var pts = [[px - half, py - half], [px + half, py - half], [px + half, py + half], [px - half, py + half]];
+      travelTo(pts[0][0], pts[0][1]);
+      for (var k = 1; k <= 4; k++) lineTo(pts[k % 4][0], pts[k % 4][1], f);
+    }
+
+    var section = -1;
+    for (var i = 0; i < layers; i++) {
+      var z = (i + 1) * lh;
+      var s = Math.min(n - 1, Math.floor((i * lh + 1e-6) / sh));
+      g.push(";LAYER:" + i);
+      if (s !== section) {
+        section = s;
+        var v = values[s];
+        g.push(";SECTION " + (s + 1) + ": " + num(v, 2) + " " + L.unit);
+        if (test === "temp") g.push("M104 S" + Math.round(v));
+        else if (test === "rdist") curRet = v;
+        else curRetSpd = v;
+      }
+      if (i === 1 && fan > 0) g.push("M106 S" + Math.round(fan * 2.55));
+      g.push("G1 Z" + num(z) + " F" + F.travel);
+      var f = i === 0 ? F.first : F.print;
+      for (var p = 0; p < 2; p++) {
+        var px = pillars[p][0], py = pillars[p][1];
+        if (i === 0) for (var b = brimLoops - 1; b >= 0; b--) square(px, py, size / 2 + lw * (b + 0.5), f);
+        for (var w = 0; w < walls; w++) square(px, py, size / 2 - lw * (w + 0.5), f);
+      }
+    }
+    g.push("; end");
+    g.push("M107");
+    g.push("M104 S0");
+    g.push("M140 S0");
+    g.push("G1 E-" + num(Math.max(curRet, 1)) + " F" + Math.round(Math.max(curRetSpd, 20) * 60));
+    g.push("G91");
+    g.push("G1 Z10 F600");
+    g.push("G90");
+    g.push("G0 X" + num(center ? 0 : 5) + " Y" + num(center ? bedy / 2 - 10 : bedy - 10) + " F" + F.travel);
+    g.push("M84");
+    g.push("; total height " + num(totalH, 1) + " mm, " + layers + " layers");
+    gcode = g.join("\n") + "\n";
+
+    var rows = values.map(function (v, i) {
+      return "<tr><td>Section " + (i + 1) + "</td><td>" + num(i * sh, 0) + " – " + num((i + 1) * sh, 0) + " mm</td><td><strong>" + num(v, 2) + " " + L.unit + "</strong></td></tr>";
+    });
+    LC.html("rows", rows.join(""));
+    var estMin = 0;
+    // rough time: total extrusion path ÷ speed + travel
+    var perLayerPath = 2 * (walls * 4 * size) + (walls > 0 ? 2 * gap : 0);
+    estMin = (layers * perLayerPath / speed + layers * gap / travel * 2) / 60 * 1.3;
+    LC.out("r_summary", n + " sections · " + num(totalH, 0) + " mm tall · " + values[0] + " → " + num(values[n - 1], 2) + " " + L.unit);
+    LC.out("r_detail", layers + " layers · about " + LC.hours(estMin / 60) + " · " + (gcode.length / 1024).toFixed(0) + " KB");
+    filename = "layercalc-" + test + "-tower-" + num(values[0], 1) + "-to-" + num(values[n - 1], 1) + ".gcode";
+    LC.show("warn", warns.length > 0); LC.html("warn", warns.join("<br>"));
+    if (!LC.el("gpre").hidden) showPreview();
+  }
+  function showPreview() {
+    var lines = gcode.split("\n");
+    var head = lines.slice(0, 70).join("\n"), tail = lines.slice(-14).join("\n");
+    LC.out("gpre", head + "\n\n; … " + (lines.length - 84) + " more lines …\n\n" + tail);
+    LC.show("gpre", true);
+  }
+  LC.el("preview").addEventListener("click", function () { if (LC.el("gpre").hidden) showPreview(); else LC.show("gpre", false); });
+  LC.el("dl").addEventListener("click", function () { generate(); LC.download(filename, gcode, "text/x-gcode"); });
+  LC.bind("f", generate);
+})();
+</script>
+<!--ARTICLE-->
+<h2>What the generator prints</h2>
+<p>Two square pillars, two walls thick, with a brim on the first layer for adhesion. The nozzle prints one pillar's walls, travels across the gap, prints the other, and comes back — once per layer, all the way up. The tower is divided into equal-height sections and the test value changes at the start of each one:</p>
+<ul>
+  <li><strong>Temperature tower:</strong> an <code>M104</code> at each section boundary sets the new nozzle temperature. The print continues while it changes, which takes a few layers for a 5 °C step — read each section from its top half.</li>
+  <li><strong>Retraction distance / speed:</strong> every travel across the gap retracts with that section's value. Everything else is held constant.</li>
+</ul>
+<p>The crossing is the whole point. Stringing, oozing and blobbing all happen on travels, and a 40 mm unsupported gap between two small pillars is the harshest travel a print ever makes. Whichever section has clean pillars and a clean gap is your answer.</p>
+
+<h2>Reading the result</h2>
+<ol>
+  <li>Note the section values from the table above (they're also in the G-code header). Section 1 is at the bottom.</li>
+  <li>For a <strong>temperature tower</strong>, look at four things per section: stringing across the gap (worse when hot), layer adhesion (try to snap a pillar — worse when cold), the gloss and smoothness of the walls, and any tiny bulges at the corners (over-extrusion when hot). Pick the coolest section with good layer bonding; for strength, go 5 °C hotter than pure looks would suggest.</li>
+  <li>For <strong>retraction distance</strong>, find the first section where the strings disappear; that's your distance. Going further doesn't help and risks pulling molten plastic up into the cold end, which causes jams on Bowden printers.</li>
+  <li>For <strong>retraction speed</strong>, faster usually helps up to a point where the extruder skips or the filament grinds; use the fastest section that still looks clean.</li>
+</ol>
+
+<h2>Suggested sequences</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Test</th><th>Material / setup</th><th>Start</th><th>Step</th><th>Sections</th></tr></thead>
+<tbody>
+<tr><td>Temperature</td><td>PLA</td><td>230 °C</td><td>−5</td><td>6 (230 → 205)</td></tr>
+<tr><td>Temperature</td><td>PETG</td><td>250 °C</td><td>−5</td><td>6 (250 → 225)</td></tr>
+<tr><td>Temperature</td><td>ABS / ASA</td><td>260 °C</td><td>−5</td><td>6 (260 → 235)</td></tr>
+<tr><td>Temperature</td><td>TPU</td><td>235 °C</td><td>−5</td><td>6 (235 → 210)</td></tr>
+<tr><td>Retraction distance</td><td>Direct drive</td><td>0.2 mm</td><td>+0.2</td><td>7 (0.2 → 1.4)</td></tr>
+<tr><td>Retraction distance</td><td>Bowden</td><td>2 mm</td><td>+1</td><td>6 (2 → 7)</td></tr>
+<tr><td>Retraction speed</td><td>Direct drive</td><td>15 mm/s</td><td>+10</td><td>5 (15 → 55)</td></tr>
+<tr><td>Retraction speed</td><td>Bowden</td><td>20 mm/s</td><td>+10</td><td>5 (20 → 60)</td></tr>
+</tbody></table></div>
+<p>Do temperature first, then retraction distance at the chosen temperature, then retraction speed at the chosen distance. Flow should already be calibrated with the <a href="/flow-rate-calculator/">flow rate calculator</a>; if it isn't, over-extrusion will masquerade as "too hot".</p>
+
+<h2>Before you print</h2>
+<ul>
+  <li><strong>Preview the file.</strong> Drag it into PrusaSlicer, OrcaSlicer or Bambu Studio (File → Import → G-code), or any online G-code viewer, and check the pillars sit where you expect on the bed.</li>
+  <li><strong>Klipper users:</strong> if you rely on a <code>PRINT_START</code> macro for homing, mesh loading and heating, paste it in the custom start box with <code>{hotend}</code> and <code>{bed}</code> placeholders. The built-in start does a plain <code>G28</code> and heats, which is enough for most setups.</li>
+  <li><strong>Bambu users:</strong> printing raw G-code works from the SD card or by importing the file into Bambu Studio and sending it as-is. The built-in start code skips Bambu's purge and calibration routine, which is fine for a small test print.</li>
+  <li><strong>Deltas:</strong> tick "origin at bed center" so the pillars land around 0,0.</li>
+  <li><strong>Watch the first layer.</strong> The generator can't know your Z offset. If the brim isn't sticking, stop and adjust it as you would for any print.</li>
+</ul>
+
+<h2>What it deliberately doesn't do</h2>
+<p>No infill, no overhang features, no bridges — those belong in their own tests, and combining them makes each harder to read. There is no pressure advance or linear advance tuning; use the routines built into Klipper and Marlin for that. The print settings are conservative on purpose: a calibration print should isolate one variable, and a 40 mm/s wall speed keeps the hotend well inside its <a href="/max-volumetric-speed-calculator/">volumetric limit</a> so what you see is the temperature or retraction, not a flow problem.</p>

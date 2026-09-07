@@ -1,0 +1,123 @@
+{
+  "title": "3D Printer Electricity Cost Calculator",
+  "page_title": "3D Printer Electricity Cost Calculator – Power Use per Print, Month and Year",
+  "description": "How much electricity does a 3D printer use? Pick a printer preset or enter watts, print hours and your kWh price for the cost per print, month and year.",
+  "lede": "Pick your printer or enter its average draw, add the print time and your electricity price, and see what a print, an hour, a month and a year of printing costs in power.",
+  "short": "Power cost per print, per hour, per month and per year from wattage and your kWh price.",
+  "category": "cost",
+  "order": 40,
+  "updated": "2026-09-07",
+  "related": ["3d-print-pricing-calculator", "filament-cost-calculator", "resin-print-cost-calculator", "print-time-estimator"],
+  "faq": [
+    {"q": "How much electricity does a 3D printer use?", "a": "A typical desktop FDM printer averages 80–150 W while printing PLA — the heated bed is most of it. Enclosed printers running ABS or ASA with the bed at 100 °C average 150–250 W. Resin printers use 40–80 W. At $0.15/kWh a 10-hour PLA print on a 120 W printer costs about 18 cents."},
+    {"q": "How much does it cost to run a 3D printer for 24 hours?", "a": "At 120 W average draw and $0.15/kWh, 24 hours is 2.88 kWh, or about $0.43. At European prices of €0.30/kWh it's around €0.86. An enclosed ABS printer averaging 220 W would be roughly double."},
+    {"q": "Why is the actual draw so much lower than the power supply rating?", "a": "The rating (350 W, 500 W) is the peak the supply can deliver, used only while the bed and hotend heat up. Once at temperature they cycle on and off to hold it, and the average falls to a third or a half of peak. Only an average draw gives a sensible cost."},
+    {"q": "Does the heated bed use most of the power?", "a": "Yes. A 220 mm bed at 60 °C typically averages 40–70 W; at 100 °C it can be 120 W or more, and a 350 mm bed at 110 °C dominates everything else in the machine. Insulating the underside of the bed or printing in an enclosure reduces it noticeably."},
+    {"q": "How do I measure my printer's real power draw?", "a": "A plug-in energy meter ($10–20) between the printer and the wall shows live watts and accumulated kWh. Run a typical print and read the total kWh at the end, then divide by hours for your true average. Enter that number here instead of a preset."}
+  ]
+}
+<form id="f" class="calc-form" novalidate>
+  <div class="fields">
+    <div class="field">
+      <label for="preset">Printer preset</label>
+      <select id="preset">
+        <option value="" selected>Custom / measured</option>
+        <optgroup label="Bedslingers">
+          <option value="110">Ender 3 / V2 / S1 – PLA (≈110 W)</option>
+          <option value="150">Ender 3 family – PETG/ABS (≈150 W)</option>
+          <option value="85">Prusa MK3S / MK4 – PLA (≈85 W)</option>
+          <option value="105">Prusa MK4 – PETG (≈105 W)</option>
+          <option value="60">Bambu Lab A1 mini – PLA (≈60 W)</option>
+          <option value="90">Bambu Lab A1 – PLA (≈90 W)</option>
+          <option value="120">Elegoo Neptune 4 / Sovol SV06 – PLA (≈120 W)</option>
+        </optgroup>
+        <optgroup label="CoreXY / enclosed">
+          <option value="110">Bambu Lab P1P / P1S / X1C – PLA (≈110 W)</option>
+          <option value="180">Bambu Lab P1S / X1C – ABS/ASA, enclosed (≈180 W)</option>
+          <option value="130">Creality K1 / K1C – PLA (≈130 W)</option>
+          <option value="210">Creality K1 Max – ABS (≈210 W)</option>
+          <option value="260">Voron 2.4 350 mm – ABS (≈260 W)</option>
+        </optgroup>
+        <optgroup label="Resin">
+          <option value="45">Small MSLA (Mars, Photon Mono) (≈45 W)</option>
+          <option value="60">Mid MSLA (Saturn, Photon M5) (≈60 W)</option>
+          <option value="100">Large MSLA (Saturn 4 Ultra 16K, Jupiter) (≈100 W)</option>
+        </optgroup>
+      </select>
+      <p class="hint">Typical averages while printing; measure your own for accuracy.</p>
+    </div>
+    <div class="field"><label for="watts">Average power draw</label><div class="inwrap"><input type="number" id="watts" value="120" min="0" step="1" inputmode="decimal"><span class="unit">W</span></div></div>
+    <div class="field"><label for="hrs">Print time</label><div class="inwrap"><input type="number" id="hrs" value="8" min="0" step="0.1" inputmode="decimal"><span class="unit">hours</span></div></div>
+    <div class="field"><label for="rate">Electricity price</label><div class="inwrap prefix"><span class="pre" data-cur>$</span><input type="number" id="rate" value="0.15" min="0" step="0.001" inputmode="decimal"></div><p class="hint">Per kWh, from your bill.</p></div>
+    <div class="field"><label for="weekly">Printing per week</label><div class="inwrap"><input type="number" id="weekly" value="20" min="0" step="1" inputmode="decimal"><span class="unit">hours</span></div><p class="hint">For the monthly and yearly figures.</p></div>
+  </div>
+  <div class="results">
+    <div class="result primary"><div class="l">Cost of this print</div><div class="v" id="r_print">—</div><div class="s" id="r_kwh"></div></div>
+    <div class="result"><div class="l">Per hour</div><div class="v" id="r_hour">—</div></div>
+    <div class="result"><div class="l">Per 24 hours</div><div class="v" id="r_day">—</div></div>
+    <div class="result"><div class="l">Per month</div><div class="v" id="r_month">—</div><div class="s" id="r_mkwh"></div></div>
+    <div class="result"><div class="l">Per year</div><div class="v" id="r_year">—</div><div class="s" id="r_ykwh"></div></div>
+  </div>
+  <div class="actions">
+    <button type="button" class="btn-ghost" data-reset>Reset</button>
+    <span id="cur"></span>
+  </div>
+</form>
+<script>
+(function () {
+  LC.el("preset").addEventListener("change", function () { if (this.value) LC.el("watts").value = this.value; });
+  function calc() {
+    var kw = (LC.num("watts") || 0) / 1000, hrs = LC.num("hrs") || 0, rate = LC.num("rate") || 0, weekly = LC.num("weekly") || 0;
+    var kwh = kw * hrs, perHour = kw * rate;
+    var monthH = weekly * 52 / 12, yearH = weekly * 52;
+    LC.out("r_print", LC.money(kwh * rate));
+    LC.out("r_kwh", LC.fmt(kwh, 2) + " kWh for " + LC.hours(hrs));
+    LC.out("r_hour", LC.money(perHour, 3));
+    LC.out("r_day", LC.money(perHour * 24));
+    LC.out("r_month", LC.money(kw * monthH * rate));
+    LC.out("r_mkwh", LC.fmt(kw * monthH, 1) + " kWh at " + LC.fmt(monthH, 0) + " h/month");
+    LC.out("r_year", LC.money(kw * yearH * rate));
+    LC.out("r_ykwh", LC.fmt(kw * yearH, 0) + " kWh at " + LC.fmt(yearH, 0) + " h/year");
+  }
+  LC.currencyPicker("cur");
+  LC.bind("f", calc);
+})();
+</script>
+<!--ARTICLE-->
+<h2>How the cost is calculated</h2>
+<div class="formula">energy (kWh) = average watts ÷ 1000 × hours<br>cost = energy × price per kWh</div>
+<p>The only difficult input is the average watts, because a 3D printer's consumption isn't constant. During the first two or three minutes, while the bed and hotend heat, a typical machine pulls 250–400 W. Once at temperature the heaters cycle on and off to hold it and the average drops sharply. Over a print of any length the warm-up is a rounding error and the holding power is what you pay for.</p>
+
+<div class="example">
+<h3>Worked example</h3>
+<p>An 8-hour PLA print on a printer averaging 120 W, at $0.15 per kWh.</p>
+<ul>
+  <li>Energy: 0.12 kW × 8 h = <strong>0.96 kWh</strong></li>
+  <li>Cost: 0.96 × $0.15 = <strong>$0.14</strong></li>
+</ul>
+<p>Twenty hours a week of the same works out at about 104 kWh and <strong>$15.60 a year</strong> — less than one spool of filament. Electricity is rarely the reason a print is expensive; it's just the one people ask about most.</p>
+</div>
+
+<h2>Where the power goes</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Component</th><th>Typical average draw</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>Heated bed, 220 mm at 60 °C (PLA)</td><td>40 – 70 W</td><td>Largest single consumer. Roughly doubles at 80 °C and doubles again at 100 °C.</td></tr>
+<tr><td>Heated bed, 350 mm at 110 °C (ABS)</td><td>150 – 250 W</td><td>Why large-format ABS printing costs several times more to run.</td></tr>
+<tr><td>Hotend at 200–250 °C</td><td>15 – 30 W</td><td>Small once at temperature; a 40–60 W heater cycles at 30–50% duty.</td></tr>
+<tr><td>Motors, fans, mainboard, screen</td><td>15 – 30 W</td><td>Fairly constant. High-speed CoreXY machines sit at the top of the range.</td></tr>
+<tr><td>Chamber heater (if fitted)</td><td>100 – 300 W</td><td>Only on actively heated enclosures such as the Bambu H2D or Voron with a heater.</td></tr>
+<tr><td>Resin printer (UV LED + LCD + motor)</td><td>40 – 100 W</td><td>The LED array is only on during each layer's exposure.</td></tr>
+</tbody></table></div>
+
+<h2>Ways to use less</h2>
+<ul>
+  <li><strong>Lower the bed temperature.</strong> Most PLA sticks fine at 50–55 °C on a textured PEI sheet; going from 60 to 50 °C saves a meaningful share of the bed's power.</li>
+  <li><strong>Insulate the bed.</strong> A cork or foil-backed foam sheet under the heater cuts losses to the air below and shortens heat-up too.</li>
+  <li><strong>Enclose it.</strong> Even a passive enclosure holds a warm pocket of air around the bed, so the heater cycles less. This matters most for ABS and ASA, where the bed is the dominant load.</li>
+  <li><strong>Print faster.</strong> Power is per hour; a print that finishes in half the time costs about half as much to run, whatever the material.</li>
+</ul>
+
+<h2>Measuring your own printer</h2>
+<p>The presets are typical averages compiled from published measurements and community testing, and real machines vary by firmware, bed size, ambient temperature and material. For an exact figure, a plug-in energy meter between the printer and the wall shows live watts and a running kWh total. Read the total at the end of a normal print, divide by its length, and you have your true average draw — enter that in the wattage field and the presets become irrelevant.</p>
+<p>If you sell prints, electricity is one line of a bigger sum; the <a href="/3d-print-pricing-calculator/">pricing calculator</a> combines it with material, machine wear and your time.</p>

@@ -1,0 +1,126 @@
+{
+  "title": "Filament Remaining Calculator",
+  "page_title": "How Much Filament Is Left on the Spool? Weigh It and Find Out",
+  "description": "Weigh a part-used spool, subtract the empty spool weight (presets for Bambu, Prusament, Hatchbox, eSun, Overture and more) and see grams and meters left.",
+  "lede": "Put the spool on a kitchen scale, pick the brand (or enter the empty spool's weight), and see exactly how many grams and meters of filament are left — and whether it's enough for the print you're about to start.",
+  "short": "Weigh the spool, subtract the tare, and see grams and meters left — and whether a print will make it.",
+  "category": "filament",
+  "order": 10,
+  "updated": "2026-09-07",
+  "related": ["filament-length-weight-calculator", "filament-cost-calculator", "print-time-estimator", "3d-print-pricing-calculator"],
+  "faq": [
+    {"q": "How do I know how much filament is left on a spool?", "a": "Weigh the whole spool and subtract the weight of the empty spool. What's left is filament. A full 1 kg spool on a 220 g reel weighs 1,220 g; if yours reads 640 g there's 420 g of filament left. Divide by the grams-per-meter figure for the material (about 3 g/m for 1.75 mm PLA) to get the length."},
+    {"q": "How much does an empty filament spool weigh?", "a": "Between about 100 g and 260 g depending on the maker. Cardboard spools (Overture, Polymaker, eSun cardboard) are 130–150 g; standard plastic reels (Hatchbox, eSun, Inland) 210–230 g; Bambu Lab's reusable plastic spool about 250 g; Prusament about 190 g. These vary by batch, so weigh an empty one when you finish a spool and write it on the box."},
+    {"q": "How many meters are in 1 kg of filament?", "a": "About 335 m for 1.75 mm PLA, 327 m for PETG, 400 m for ABS and 344 m for TPU. For 2.85 mm filament divide by roughly 2.65. The calculator uses the density of the material you select."},
+    {"q": "Is there a way to check without weighing?", "a": "Roughly, by counting winds: measure the spool's inner and outer diameter and the width of the wound filament, but it's much less accurate than a $10 kitchen scale. Some printers (Bambu with RFID spools, Prusa with the filament counter) track usage, but only for spools they've used from new."},
+    {"q": "My scale only shows whole grams. Is that accurate enough?", "a": "Yes. One gram is a third of a meter of filament — nothing you'll notice. The bigger uncertainty is the empty spool weight, which can vary by 10–20 g between batches of the same brand."}
+  ]
+}
+<form id="f" class="calc-form" novalidate>
+  <div class="fields">
+    <div class="field"><label for="gross">Spool weighs now</label><div class="inwrap"><input type="number" id="gross" value="640" min="0" step="1" inputmode="decimal"><span class="unit">g</span></div><p class="hint">Whole spool on the scale, filament and all.</p></div>
+    <div class="field">
+      <label for="brand">Empty spool (tare)</label>
+      <select id="brand">
+        <option value="" selected>Custom / I weighed it</option>
+        <optgroup label="Plastic reels">
+          <option value="250">Bambu Lab reusable spool (≈250 g)</option>
+          <option value="190">Prusament (≈190 g)</option>
+          <option value="225">Hatchbox (≈225 g)</option>
+          <option value="220">eSun plastic (≈220 g)</option>
+          <option value="225">Inland / Micro Center (≈225 g)</option>
+          <option value="215">Creality Hyper / Ender (≈215 g)</option>
+          <option value="220">Elegoo (≈220 g)</option>
+          <option value="200">Sunlu plastic (≈200 g)</option>
+          <option value="220">Generic black plastic reel (≈220 g)</option>
+        </optgroup>
+        <optgroup label="Cardboard spools">
+          <option value="140">Overture cardboard (≈140 g)</option>
+          <option value="145">Polymaker cardboard (≈145 g)</option>
+          <option value="135">eSun cardboard (≈135 g)</option>
+          <option value="130">Generic cardboard spool (≈130 g)</option>
+        </optgroup>
+        <optgroup label="Spool-less refills">
+          <option value="12">Bambu Lab refill (cardboard core only, ≈12 g)</option>
+        </optgroup>
+      </select>
+    </div>
+    <div class="field"><label for="tare">Empty spool weight</label><div class="inwrap"><input type="number" id="tare" value="220" min="0" step="1" inputmode="decimal"><span class="unit">g</span></div><p class="hint">Presets are approximate — weigh an empty one when you can.</p></div>
+    <div class="field">
+      <label for="mat">Material</label>
+      <select id="mat">
+        <option value="1.24" selected>PLA</option><option value="1.27">PETG</option><option value="1.04">ABS</option><option value="1.07">ASA</option>
+        <option value="1.21">TPU</option><option value="1.20">PC</option><option value="1.14">Nylon PA6</option><option value="1.01">Nylon PA12</option>
+        <option value="1.29">PLA-CF</option><option value="1.30">PETG-CF</option><option value="1.04">HIPS</option><option value="1.23">PVA</option><option value="0.90">PP</option>
+      </select>
+    </div>
+    <div class="field"><label for="dia">Diameter</label><select id="dia"><option value="1.75" selected>1.75 mm</option><option value="2.85">2.85 mm</option></select></div>
+    <div class="field"><label for="need">Print I want to run needs</label><div class="inwrap"><input type="number" id="need" value="" placeholder="optional" min="0" step="1" inputmode="decimal"><span class="unit">g</span></div><p class="hint">From the slicer.</p></div>
+  </div>
+  <div class="results">
+    <div class="result primary"><div class="l">Filament left</div><div class="v" id="r_g">—</div><div class="s" id="r_pct"></div></div>
+    <div class="result"><div class="l">Length left</div><div class="v" id="r_m">—</div><div class="s" id="r_gpm"></div></div>
+    <div class="result" id="fitbox" hidden><div class="l">Enough for the print?</div><div class="v" id="r_fit">—</div><div class="s" id="r_fits"></div></div>
+  </div>
+  <div id="warn" class="warn-box" hidden></div>
+  <div class="actions"><button type="button" class="btn-ghost" data-reset>Reset</button></div>
+</form>
+<script>
+(function () {
+  LC.el("brand").addEventListener("change", function () { if (this.value) LC.el("tare").value = this.value; });
+  function calc() {
+    var gross = LC.num("gross"), tare = LC.num("tare") || 0, dens = parseFloat(LC.val("mat")), d = parseFloat(LC.val("dia")), need = LC.num("need");
+    var left = gross - tare, gpm = Math.PI * Math.pow(d / 2, 2) * dens;
+    LC.show("warn", left < 0); LC.html("warn", "The spool weighs less than the empty spool — the tare is wrong for this reel. Weigh an empty spool of the same type, or pick a different preset.");
+    if (!isFinite(left)) { LC.out("r_g", "—"); return; }
+    left = Math.max(0, left);
+    LC.out("r_g", LC.fmt(left, 0) + " g");
+    LC.out("r_pct", LC.fmt(left / 10, 0) + "% of a 1 kg spool");
+    LC.out("r_m", LC.fmt(left / gpm, 1) + " m");
+    LC.out("r_gpm", LC.fmt(gpm, 2) + " g per meter for this material");
+    var has = isFinite(need) && need > 0;
+    LC.show("fitbox", has);
+    if (has) {
+      var margin = left - need;
+      var cls = margin >= need * 0.1 + 5 ? "ok" : margin >= 0 ? "warn" : "bad";
+      LC.setClass("fitbox", "result " + cls);
+      LC.out("r_fit", margin >= 0 ? "Yes" : "No");
+      LC.out("r_fits", margin >= 0 ? LC.fmt(margin, 0) + " g to spare" + (cls === "warn" ? " — tight; tare error could eat it" : "") : "short by " + LC.fmt(-margin, 0) + " g");
+    }
+  }
+  LC.bind("f", calc);
+})();
+</script>
+<!--ARTICLE-->
+<h2>How it works</h2>
+<div class="formula">filament left (g) = spool weight now − empty spool weight<br>length left (m) = grams ÷ (π × (diameter ÷ 2)² × density)</div>
+<p>Weight is the only reliable way to know what's on a spool, because you can't see how many layers are wound underneath the outer one. The single piece of information you need beyond a scale is the empty spool's weight, and that's the one most people don't have — which is why the presets exist.</p>
+
+<div class="example">
+<h3>Worked example</h3>
+<p>A Hatchbox PLA spool reads 640 g on the kitchen scale.</p>
+<ul>
+  <li>Filament left: 640 − 225 = <strong>415 g</strong> (about 41% of the original kilo)</li>
+  <li>Length: 415 ÷ 2.98 g/m = <strong>139 m</strong></li>
+  <li>A print needing 380 g will make it with 35 g to spare — enough, but a mid-print runout would waste 380 g, so it's worth double-checking the tare on a reel you've weighed yourself.</li>
+</ul>
+</div>
+
+<h2>Empty spool weights</h2>
+<p>These are typical values compiled from manufacturer statements and community measurements. Spools change — several brands moved from plastic to cardboard between 2022 and 2025, and even the same design varies by 10–20 g batch to batch. The only exact number is the one you get by weighing an empty one.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Spool</th><th>Approx. empty weight</th><th>Type</th></tr></thead>
+<tbody>
+<tr><td>Bambu Lab reusable spool</td><td>250 g</td><td>Plastic, two-part</td></tr>
+<tr><td>Bambu Lab refill (core only)</td><td>12 g</td><td>Cardboard core, no flanges</td></tr>
+<tr><td>Prusament</td><td>190 g</td><td>Plastic (the label often prints the exact tare)</td></tr>
+<tr><td>Hatchbox, Inland, Elegoo, eSun (plastic)</td><td>220 – 225 g</td><td>Standard black plastic reel</td></tr>
+<tr><td>Creality, Sunlu</td><td>200 – 215 g</td><td>Plastic</td></tr>
+<tr><td>Overture, Polymaker, eSun (cardboard)</td><td>135 – 145 g</td><td>Cardboard</td></tr>
+<tr><td>Generic cardboard</td><td>≈ 130 g</td><td>Cardboard</td></tr>
+</tbody></table></div>
+<p>A habit that pays off: when a spool runs out, weigh it, and write the number on the box or in a note. After a few months you'll have exact tares for every brand you buy, and the presets become unnecessary.</p>
+
+<h2>Turning grams into prints</h2>
+<p>Your slicer reports the grams a print needs. Compare directly with what's left, and keep a margin — the tare uncertainty alone can be ±15 g, and printers waste a little on purge lines and retractions the slicer doesn't count. If the margin is under about 10% of the print's weight, it's a gamble; either use a fresh spool, or plan to swap spools mid-print (most modern printers pause on runout, and most filaments can be spliced or simply changed at a pause).</p>
+<p>To go the other way — how many grams a given length is, or how far 300 g will go — use the <a href="/filament-length-weight-calculator/">length ↔ weight converter</a>, and to see what those grams cost, the <a href="/filament-cost-calculator/">filament cost calculator</a>.</p>

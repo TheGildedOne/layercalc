@@ -1,0 +1,183 @@
+{
+  "title": "3D Print Pricing Calculator",
+  "page_title": "3D Print Pricing Calculator – What to Charge for a Print (with Etsy Fees)",
+  "description": "Price a 3D print properly: material, machine wear, electricity, labor, failures and markup, plus the list price that survives Etsy or eBay fees.",
+  "lede": "Add up everything a print actually costs — filament, machine wear, power, your time, the odd failure — then set a markup and see the price to list on Etsy or eBay so the fees don't eat your margin.",
+  "short": "Full cost of a print plus markup, and the list price that survives marketplace fees.",
+  "category": "cost",
+  "order": 20,
+  "updated": "2026-09-07",
+  "related": ["filament-cost-calculator", "3d-printer-electricity-cost-calculator", "print-time-estimator", "resin-print-cost-calculator"],
+  "faq": [
+    {"q": "How much should I charge for a 3D print?", "a": "Cost it fully first — material, machine time, electricity, labor and a failure allowance — then add a markup, typically 30–100% depending on how custom the work is. For most hobby-scale sellers that lands between $1 and $3 per hour of print time plus material, but the calculator gives you your own number rather than a rule of thumb."},
+    {"q": "What's a reasonable hourly rate for printer time?", "a": "Take the printer's price, divide by the hours you expect from it (2,000–5,000 is realistic for a well-maintained hobby machine), and add maintenance and electricity. A $400 printer over 3,000 hours is $0.13/h in depreciation, plus around $0.02–0.05/h for power and $0.03–0.10/h for nozzles, belts and build plates."},
+    {"q": "How do Etsy fees change the price?", "a": "Etsy takes a 6.5% transaction fee and roughly 3% + $0.25 for payment processing, plus a $0.20 listing fee, so about 9.5% plus $0.45 per sale. To net a price P you need to list at (P + 0.45) ÷ (1 − 0.095). The calculator does this for you; if offsite ads apply to a sale, add another 12–15%."},
+    {"q": "Should I charge for design time?", "a": "Yes, but separately. Design is a one-off cost recovered across every unit you sell, whereas this calculator prices a single print. Either bill design as its own line item or divide it by the number of units you expect to sell and add that to 'other per-item costs'."},
+    {"q": "Is markup the same as profit margin?", "a": "No. Markup is added to cost; margin is a share of the price. A 50% markup on a $10 cost gives a $15 price, which is a 33% margin. The calculator reports both so you can compare with whatever figure you had in mind."}
+  ]
+}
+<form id="f" class="calc-form" novalidate>
+  <fieldset class="group">
+    <legend>Material</legend>
+    <div class="fields">
+      <div class="field"><label for="g">Filament used</label><div class="inwrap"><input type="number" id="g" value="60" min="0" step="0.1" inputmode="decimal"><span class="unit">g</span></div><p class="hint">From the slicer, including supports.</p></div>
+      <div class="field"><label for="ppk">Filament price per kg</label><div class="inwrap prefix"><span class="pre" data-cur>$</span><input type="number" id="ppk" value="22" min="0" step="0.01" inputmode="decimal"></div></div>
+    </div>
+  </fieldset>
+  <fieldset class="group">
+    <legend>Machine</legend>
+    <div class="fields">
+      <div class="field"><label for="hrs">Print time</label><div class="inwrap"><input type="number" id="hrs" value="6" min="0" step="0.1" inputmode="decimal"><span class="unit">hours</span></div><p class="hint">Decimal hours: 2 h 30 m = 2.5</p></div>
+      <div class="field"><label for="pcost">Printer cost</label><div class="inwrap prefix"><span class="pre" data-cur>$</span><input type="number" id="pcost" value="400" min="0" step="1" inputmode="decimal"></div></div>
+      <div class="field"><label for="life">Expected printer life</label><div class="inwrap"><input type="number" id="life" value="3000" min="1" step="100" inputmode="decimal"><span class="unit">hours</span></div><p class="hint">2,000–5,000 h is realistic.</p></div>
+      <div class="field"><label for="maint">Maintenance per hour</label><div class="inwrap prefix"><span class="pre" data-cur>$</span><input type="number" id="maint" value="0.05" min="0" step="0.01" inputmode="decimal"></div><p class="hint">Nozzles, belts, plates, fans.</p></div>
+      <div class="field"><label for="watts">Average power draw</label><div class="inwrap"><input type="number" id="watts" value="120" min="0" step="1" inputmode="decimal"><span class="unit">W</span></div></div>
+      <div class="field"><label for="rate">Electricity price</label><div class="inwrap prefix"><span class="pre" data-cur>$</span><input type="number" id="rate" value="0.15" min="0" step="0.01" inputmode="decimal"></div><p class="hint">Per kWh, from your bill.</p></div>
+    </div>
+  </fieldset>
+  <fieldset class="group">
+    <legend>Labor &amp; other</legend>
+    <div class="fields">
+      <div class="field"><label for="lab">Your time on this print</label><div class="inwrap"><input type="number" id="lab" value="15" min="0" step="1" inputmode="decimal"><span class="unit">min</span></div><p class="hint">Slicing, removal, support cleanup, packing.</p></div>
+      <div class="field"><label for="lrate">Your hourly rate</label><div class="inwrap prefix"><span class="pre" data-cur>$</span><input type="number" id="lrate" value="20" min="0" step="1" inputmode="decimal"></div></div>
+      <div class="field"><label for="other">Other per-item costs</label><div class="inwrap prefix"><span class="pre" data-cur>$</span><input type="number" id="other" value="0.50" min="0" step="0.01" inputmode="decimal"></div><p class="hint">Packaging, inserts, hardware, licence fees.</p></div>
+    </div>
+  </fieldset>
+  <fieldset class="group">
+    <legend>Risk, margin &amp; marketplace</legend>
+    <div class="fields">
+      <div class="field"><label for="fail">Failure rate</label><div class="inwrap"><input type="number" id="fail" value="5" min="0" max="90" step="1" inputmode="decimal"><span class="unit">%</span></div></div>
+      <div class="field"><label for="markup">Markup on cost</label><div class="inwrap"><input type="number" id="markup" value="50" min="0" step="5" inputmode="decimal"><span class="unit">%</span></div></div>
+      <div class="field"><label for="mkt">Selling on</label>
+        <select id="mkt">
+          <option value="none" selected>Direct (no fees)</option>
+          <option value="etsy">Etsy</option>
+          <option value="ebay">eBay</option>
+          <option value="custom">Custom fees</option>
+        </select></div>
+      <div class="field"><label for="mpct">Fee percentage</label><div class="inwrap"><input type="number" id="mpct" value="0" min="0" max="99" step="0.1" inputmode="decimal"><span class="unit">%</span></div></div>
+      <div class="field"><label for="mfix">Fixed fee per sale</label><div class="inwrap prefix"><span class="pre" data-cur>$</span><input type="number" id="mfix" value="0" min="0" step="0.01" inputmode="decimal"></div><p class="hint">Listing + payment fixed part.</p></div>
+    </div>
+  </fieldset>
+
+  <div class="results">
+    <div class="result primary"><div class="l">Price to charge (before marketplace fees)</div><div class="v" id="r_price">—</div><div class="s" id="r_margin"></div></div>
+    <div class="result"><div class="l">Total cost</div><div class="v" id="r_cost">—</div></div>
+    <div class="result"><div class="l">Profit per print</div><div class="v" id="r_profit">—</div><div class="s" id="r_hourly"></div></div>
+    <div class="result" id="r_listbox"><div class="l" id="r_listlabel">List price</div><div class="v" id="r_list">—</div><div class="s" id="r_fees"></div></div>
+  </div>
+  <div class="table-wrap breakdown"><table>
+    <thead><tr><th>Cost line</th><th>Amount</th></tr></thead>
+    <tbody>
+      <tr><td>Material</td><td id="b_mat">—</td></tr>
+      <tr><td>Machine depreciation</td><td id="b_dep">—</td></tr>
+      <tr><td>Maintenance</td><td id="b_maint">—</td></tr>
+      <tr><td>Electricity</td><td id="b_elec">—</td></tr>
+      <tr><td>Labor</td><td id="b_lab">—</td></tr>
+      <tr><td>Other per-item</td><td id="b_other">—</td></tr>
+      <tr><td>Failure allowance</td><td id="b_fail">—</td></tr>
+      <tr class="total"><td>Total cost</td><td id="b_total">—</td></tr>
+    </tbody></table></div>
+  <div class="actions">
+    <button type="button" class="btn" id="copy">Copy quote</button>
+    <button type="button" class="btn-ghost" data-reset>Reset</button>
+    <span id="cur"></span>
+  </div>
+</form>
+<script>
+(function () {
+  var presets = { none: [0, 0], etsy: [9.5, 0.45], ebay: [13.6, 0.30] };
+  var names = { none: "direct", etsy: "Etsy", ebay: "eBay", custom: "marketplace" };
+  var last = {};
+  LC.el("mkt").addEventListener("change", function () {
+    var p = presets[this.value];
+    if (p) { LC.el("mpct").value = p[0]; LC.el("mfix").value = p[1]; }
+  });
+  function calc() {
+    var g = LC.num("g"), ppk = LC.num("ppk"), hrs = LC.num("hrs"), pcost = LC.num("pcost"), life = LC.num("life");
+    var maintR = LC.num("maint") || 0, watts = LC.num("watts") || 0, rate = LC.num("rate") || 0;
+    var lab = LC.num("lab") || 0, lrate = LC.num("lrate") || 0, other = LC.num("other") || 0;
+    var fail = Math.min(LC.num("fail") || 0, 90) / 100, markup = (LC.num("markup") || 0) / 100;
+    var mpct = Math.min(LC.num("mpct") || 0, 99) / 100, mfix = LC.num("mfix") || 0, mkt = LC.val("mkt");
+
+    var material = g / 1000 * ppk;
+    var dep = hrs * pcost / life;
+    var maint = hrs * maintR;
+    var elec = watts / 1000 * hrs * rate;
+    var labor = lab / 60 * lrate;
+    var machineSide = material + dep + maint + elec;
+    var failAllow = machineSide * (1 / (1 - fail) - 1);
+    var cost = machineSide + labor + other + failAllow;
+    var price = cost * (1 + markup);
+    var list = (price + mfix) / (1 - mpct);
+    var fees = list - price;
+    var profit = price - cost;
+    var margin = price > 0 ? profit / price * 100 : NaN;
+
+    LC.out("r_price", LC.money(price));
+    LC.out("r_margin", isFinite(margin) ? LC.fmt(markup * 100, 0) + "% markup = " + LC.fmt(margin, 0) + "% margin" : "");
+    LC.out("r_cost", LC.money(cost));
+    LC.out("r_profit", LC.money(profit));
+    LC.out("r_hourly", lab > 0 ? LC.money(profit / (lab / 60)) + " per hour of your time" : "");
+    LC.out("r_listlabel", mkt === "none" ? "List price (no fees)" : "List price on " + names[mkt]);
+    LC.out("r_list", LC.money(list));
+    LC.out("r_fees", fees > 0.0001 ? "fees " + LC.money(fees) + " per sale" : "no marketplace fees");
+    LC.out("b_mat", LC.money(material)); LC.out("b_dep", LC.money(dep)); LC.out("b_maint", LC.money(maint));
+    LC.out("b_elec", LC.money(elec)); LC.out("b_lab", LC.money(labor)); LC.out("b_other", LC.money(other));
+    LC.out("b_fail", LC.money(failAllow)); LC.out("b_total", LC.money(cost));
+    last = { g: g, hrs: hrs, material: material, machine: dep + maint + elec, labor: labor, other: other, failAllow: failAllow,
+             cost: cost, price: price, list: list, fees: fees, mkt: mkt };
+  }
+  LC.copyButton("copy", function () {
+    var L = last;
+    var lines = ["3D print quote — " + LC.fmt(L.g, 0) + " g, " + LC.hours(L.hrs) + " print time",
+      "Material: " + LC.money(L.material), "Machine time (depreciation, maintenance, power): " + LC.money(L.machine),
+      "Labor: " + LC.money(L.labor), "Other: " + LC.money(L.other), "Failure allowance: " + LC.money(L.failAllow),
+      "Total cost: " + LC.money(L.cost), "Price: " + LC.money(L.price)];
+    if (L.mkt !== "none") lines.push("List price on " + names[L.mkt] + ": " + LC.money(L.list) + " (fees " + LC.money(L.fees) + ")");
+    return lines.join("\n");
+  });
+  LC.currencyPicker("cur");
+  LC.bind("f", calc);
+})();
+</script>
+<!--ARTICLE-->
+<h2>What a 3D print actually costs</h2>
+<p>Most people price prints by filament alone, or by a rule like "three times the material". Both undercharge, because on any print longer than an hour the plastic is the cheapest thing involved. The calculator builds the price from five real costs and one honest allowance:</p>
+<div class="formula">material    = grams ÷ 1000 × price per kg<br>machine     = hours × (printer cost ÷ life hours + maintenance per hour)<br>electricity = watts ÷ 1000 × hours × price per kWh<br>labor       = minutes ÷ 60 × your hourly rate<br>failures    = (material + machine + electricity) × (1 ÷ (1 − failure rate) − 1)<br>cost        = all of the above + other per-item costs<br>price       = cost × (1 + markup)</div>
+<p>Failures are applied only to the machine-side costs. A failed print wastes plastic, machine hours and power; it doesn't usually double the packing time.</p>
+
+<div class="example">
+<h3>Worked example</h3>
+<p>A 60 g PLA print that takes 6 hours on a $400 printer, sold on Etsy.</p>
+<ul>
+  <li>Material: 60 g × $0.022 = <strong>$1.32</strong></li>
+  <li>Depreciation: 6 h × $400 ÷ 3,000 h = <strong>$0.80</strong></li>
+  <li>Maintenance: 6 h × $0.05 = <strong>$0.30</strong></li>
+  <li>Electricity: 0.12 kW × 6 h × $0.15 = <strong>$0.11</strong></li>
+  <li>Labor: 15 min at $20/h = <strong>$5.00</strong></li>
+  <li>Packaging: <strong>$0.50</strong></li>
+  <li>Failure allowance at 5%: ($1.32 + $0.80 + $0.30 + $0.11) × 0.0526 = <strong>$0.13</strong></li>
+</ul>
+<p>Total cost <strong>$8.16</strong>. With a 50% markup the price is <strong>$12.24</strong>. To net that on Etsy, list at ($12.24 + $0.45) ÷ 0.905 = <strong>$14.02</strong>. Notice that "three times material" would have given $3.96 — a loss on the labor alone.</p>
+</div>
+
+<h2>Choosing the inputs</h2>
+<h3>Printer life</h3>
+<p>A hobby machine run carefully lasts several thousand print hours before it's worth more as parts than as a printer. 3,000 hours is a fair middle figure; use 2,000 for a budget bedslinger you push hard and 5,000 for a well-built CoreXY you maintain. The number matters less than you'd think — halving it adds about 13 cents an hour on a $400 printer.</p>
+<h3>Maintenance per hour</h3>
+<p>Nozzles, PTFE tubes, belts, build plates, fans and the occasional hotend add up to roughly $100–200 a year for a printer in regular use. Divide that by the hours it runs: at 2,000 hours a year that's $0.05–0.10/h. Abrasive filaments (glow, carbon fiber) chew nozzles much faster; budget accordingly.</p>
+<h3>Power draw</h3>
+<p>Use an <em>average</em>, not the power supply rating. A typical bedslinger printing PLA averages 80–120 W after warm-up; enclosed printers running ABS at 100 °C bed temperatures average 150–250 W. The <a href="/3d-printer-electricity-cost-calculator/">electricity calculator</a> has presets, or measure with a plug-in meter for a real figure.</p>
+<h3>Labor</h3>
+<p>Count everything you'd otherwise not be doing: slicing, starting the print, removing it, cleaning supports, sanding, packing, replying to the buyer. Fifteen minutes is a fair minimum for a simple part; anything painted or assembled is far more. Charge yourself a real rate — if you wouldn't do it for that money, the price is wrong.</p>
+<h3>Markup vs. margin</h3>
+<p>Markup is added to cost; margin is the share of the sale price that's profit. They describe the same money differently: a 50% markup is a 33% margin, a 100% markup is a 50% margin. The calculator shows both. Commodity parts that anyone with a printer could make support 30–50%; custom, designed or finished work supports 100% and up.</p>
+
+<h2>Marketplace fees</h2>
+<p>Fees are charged on the <em>listed</em> price, including shipping in most cases, which is why you can't just add them on afterwards. If you want to keep P after a percentage fee f and a fixed fee c:</p>
+<div class="formula">list price = (P + c) ÷ (1 − f)</div>
+<p>The Etsy preset uses 6.5% transaction + 3% payment processing and $0.25 + $0.20 listing per sale (about 9.5% and $0.45); eBay uses roughly 13.6% and $0.30. Both marketplaces change their schedules, and processing fees vary by country, so check the current rates and edit the fields if yours differ. Etsy's Offsite Ads fee (12–15%, only on attributed sales) isn't included; if a large share of your sales come through it, bump the percentage.</p>
+
+<h2>What this doesn't include</h2>
+<p>Design time, which should be billed separately or spread across expected sales; taxes; shipping, which you pass through at cost; and the cost of your printer sitting idle, which is real but not the customer's problem. If the price the calculator gives is higher than what similar things sell for, that's information: either your costs are higher than the competition's, or theirs are being ignored.</p>

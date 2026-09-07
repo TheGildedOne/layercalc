@@ -1,0 +1,61 @@
+{
+  "title": "Filament Settings & Drying Reference",
+  "description": "Nozzle and bed temperature, fan, enclosure, drying time, density and shrinkage for PLA, PETG, ABS, ASA, TPU, PC, nylon and CF filaments in one filterable table.",
+  "updated": "2026-09-07"
+}
+<p class="lede">Typical starting settings for every common FDM material, in one table. These are ranges for mainstream brands — your spool's label wins if it says otherwise, and a <a href="/temp-tower-generator/">temperature tower</a> settles the exact number.</p>
+<div class="ref-controls"><label class="visually-hidden" for="q">Filter materials</label><input type="search" id="q" placeholder="Filter: PETG, nylon, enclosure…"></div>
+<div class="table-wrap"><table class="ref-table" id="ref">
+<thead><tr><th>Material</th><th>Nozzle °C</th><th>Bed °C</th><th>Fan</th><th>Enclosure</th><th>Drying</th><th>Density</th><th>Shrinkage</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>PLA</td><td>190 – 220</td><td>50 – 60</td><td>100%</td><td>No — keep it open</td><td>45 – 50 °C, 4 – 6 h</td><td>1.24</td><td>0.2 – 0.5%</td><td>Easiest material. Softens around 60 °C, so not for hot cars or anything near a heater.</td></tr>
+<tr><td>PLA+ / Tough PLA</td><td>200 – 230</td><td>50 – 65</td><td>80 – 100%</td><td>No</td><td>45 – 55 °C, 4 – 6 h</td><td>1.22 – 1.27</td><td>0.2 – 0.5%</td><td>Runs a little hotter than plain PLA; check the brand's range.</td></tr>
+<tr><td>Silk PLA</td><td>200 – 225</td><td>55 – 60</td><td>100%</td><td>No</td><td>45 – 50 °C, 4 h</td><td>1.20 – 1.25</td><td>0.2 – 0.5%</td><td>Weak layer adhesion; print slower and hotter than plain PLA for strength.</td></tr>
+<tr><td>PLA-CF</td><td>200 – 230</td><td>50 – 60</td><td>80 – 100%</td><td>No</td><td>50 – 55 °C, 6 h</td><td>1.25 – 1.32</td><td>0.1 – 0.3%</td><td>Hardened nozzle, 0.5 mm or larger recommended. Matte, stiff, brittle.</td></tr>
+<tr><td>PETG</td><td>230 – 250</td><td>70 – 85</td><td>30 – 50%</td><td>No</td><td>60 – 65 °C, 4 – 6 h</td><td>1.27</td><td>0.3 – 0.8%</td><td>Strings when wet or too hot. Glue stick or textured plate — it can bond to smooth PEI permanently.</td></tr>
+<tr><td>PETG-CF</td><td>240 – 265</td><td>70 – 80</td><td>30 – 50%</td><td>No</td><td>65 °C, 6 h</td><td>1.28 – 1.32</td><td>0.2 – 0.5%</td><td>Hardened nozzle. Much stiffer and less stringy than plain PETG.</td></tr>
+<tr><td>ABS</td><td>230 – 260</td><td>95 – 110</td><td>0 – 20%</td><td>Yes — warps and cracks without</td><td>70 – 80 °C, 4 h</td><td>1.04</td><td>0.8 – 1.5%</td><td>Fumes; ventilate. Acetone-smoothable. Enclosure at 40 °C+ is the real fix for warping.</td></tr>
+<tr><td>ASA</td><td>240 – 260</td><td>90 – 110</td><td>0 – 20%</td><td>Yes</td><td>75 – 80 °C, 4 h</td><td>1.07</td><td>0.5 – 0.8%</td><td>UV-stable ABS; the outdoor choice. Slightly easier than ABS.</td></tr>
+<tr><td>TPU 95A</td><td>210 – 235</td><td>30 – 50</td><td>50 – 100%</td><td>No</td><td>50 – 55 °C, 6 – 8 h</td><td>1.21</td><td>0.5 – 1.2%</td><td>Print slow (20 – 40 mm/s), minimal retraction, direct drive strongly preferred. Absorbs water fast.</td></tr>
+<tr><td>TPU 85A / softer</td><td>210 – 230</td><td>30 – 45</td><td>50 – 100%</td><td>No</td><td>50 °C, 8 h</td><td>1.15 – 1.20</td><td>0.5 – 1.5%</td><td>Direct drive only; very slow. Some are too soft for stock extruders.</td></tr>
+<tr><td>Polycarbonate (PC)</td><td>260 – 300</td><td>100 – 120</td><td>0 – 20%</td><td>Yes</td><td>75 – 80 °C, 6 – 8 h</td><td>1.20</td><td>0.6 – 1.0%</td><td>All-metal hotend required. PC blends (PC-ABS, PC-PBT) are more forgiving than pure PC.</td></tr>
+<tr><td>Nylon PA6 / PA66</td><td>250 – 280</td><td>80 – 100</td><td>0 – 20%</td><td>Yes</td><td>75 – 80 °C, 8 – 12 h</td><td>1.12 – 1.15</td><td>1.0 – 2.0%</td><td>Extremely hygroscopic — dry before every print, keep in a dry box while printing. Garolite or glue.</td></tr>
+<tr><td>Nylon PA12</td><td>240 – 270</td><td>70 – 90</td><td>0 – 20%</td><td>Recommended</td><td>70 – 75 °C, 8 h</td><td>1.01</td><td>0.8 – 1.5%</td><td>Absorbs less water than PA6 and warps less.</td></tr>
+<tr><td>PA-CF / PA-GF</td><td>260 – 300</td><td>80 – 100</td><td>0 – 30%</td><td>Yes</td><td>80 °C, 8 – 12 h</td><td>1.15 – 1.25</td><td>0.2 – 0.6%</td><td>Hardened nozzle. Fibers cut shrinkage and warping dramatically; the practical engineering nylon.</td></tr>
+<tr><td>HIPS</td><td>230 – 250</td><td>95 – 110</td><td>0 – 20%</td><td>Yes</td><td>65 – 70 °C, 4 h</td><td>1.04</td><td>0.7 – 1.0%</td><td>Support material for ABS (dissolves in limonene) or a lighter ABS alternative.</td></tr>
+<tr><td>PVA</td><td>190 – 210</td><td>50 – 60</td><td>100%</td><td>No</td><td>45 – 50 °C, 6 h</td><td>1.23</td><td>—</td><td>Water-soluble support. Ruined by humidity within days; store sealed with desiccant.</td></tr>
+<tr><td>Polypropylene (PP)</td><td>220 – 250</td><td>85 – 100</td><td>20 – 50%</td><td>Recommended</td><td>60 °C, 4 h</td><td>0.90</td><td>1.5 – 2.5%</td><td>Sticks to almost nothing except PP tape or a PP sheet; warps badly. Chemically resistant and tough.</td></tr>
+<tr><td>PET (unmodified)</td><td>240 – 270</td><td>70 – 90</td><td>20 – 40%</td><td>Recommended</td><td>65 °C, 6 h</td><td>1.30 – 1.35</td><td>0.5 – 1.0%</td><td>Stiffer than PETG, higher temperature tolerance, less common.</td></tr>
+<tr><td>Wood-filled PLA</td><td>190 – 220</td><td>50 – 60</td><td>100%</td><td>No</td><td>45 – 50 °C, 4 h</td><td>1.15 – 1.28</td><td>0.2 – 0.5%</td><td>0.5 mm nozzle or larger to avoid clogs; temperature changes the colour.</td></tr>
+<tr><td>Lightweight foaming PLA (LW-PLA)</td><td>230 – 260 (foams above ~230)</td><td>50 – 60</td><td>100%</td><td>No</td><td>45 °C, 4 h</td><td>1.2 → 0.5 – 0.6 after foaming</td><td>0.2 – 0.5%</td><td>Flow must be cut to 40 – 60% when foaming. For RC aircraft and cosplay.</td></tr>
+</tbody></table></div>
+<script>
+(function () {
+  var q = document.getElementById("q"), rows = document.querySelectorAll("#ref tbody tr");
+  q.addEventListener("input", function () {
+    var t = q.value.trim().toLowerCase();
+    for (var i = 0; i < rows.length; i++) rows[i].hidden = t && rows[i].textContent.toLowerCase().indexOf(t) === -1;
+  });
+})();
+</script>
+
+<h2>Reading the table</h2>
+<p><strong>Nozzle temperature</strong> ranges span the common brands; within a brand the range is narrower and printed on the spool. Lower for detail and less stringing, higher for strength and speed. <strong>Bed temperature</strong> is for a PEI or textured sheet; glass and glue-stick setups often want 5 – 10 °C more. <strong>Fan</strong> is the part cooling fan after the first few layers — materials that need an enclosure generally want the fan off or low, because cooling is what makes them crack between layers. <strong>Shrinkage</strong> is what the <a href="/shrinkage-compensation-calculator/">shrinkage calculator</a> corrects for; it's a starting value, not a guarantee. <strong>Density</strong> is what the <a href="/filament-length-weight-calculator/">length-to-weight converter</a> uses.</p>
+
+<h2>Drying filament</h2>
+<p>Every filament absorbs water from the air; the only difference is how fast and how much it matters. Wet filament pops and hisses at the nozzle, strings badly, prints with a rough or foamy surface, and is weaker. PLA takes weeks in a humid room to get noticeably wet; PETG and TPU days; nylon and PVA hours.</p>
+<p>The drying figures are for a purpose-built filament dryer or a food dehydrator with an accurate thermostat. A domestic oven is risky — most can't hold 50 °C reliably and a spool of PLA that sees 65 °C fuses into a solid block. Times are for a spool that's been sitting out; a badly wet spool of nylon can take a full day. After drying, keep the spool in a sealed box or bag with desiccant, or print straight from the dryer.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>How wet is it?</th><th>Signs</th><th>What to do</th></tr></thead>
+<tbody>
+<tr><td>Dry</td><td>Quiet extrusion, glossy walls, clean travels</td><td>Nothing. Store it sealed.</td></tr>
+<tr><td>Slightly wet</td><td>Occasional faint pop, a few extra strings, slightly matte finish</td><td>Dry for the table's time. Usually fully recovers.</td></tr>
+<tr><td>Wet</td><td>Steady crackling, heavy stringing, bubbles or rough surface, weak layers</td><td>Dry for 1.5 – 2× the time, then check by extruding in the air — it should come out smooth and silent.</td></tr>
+<tr><td>Very wet (nylon, PVA, TPU left out)</td><td>Foamy extrusion, blobs, prints that fail on the first layer</td><td>Dry 12 – 24 h. If the filament has gone brittle or discolored, it may not come back.</td></tr>
+</tbody></table></div>
+
+<h2>Enclosures</h2>
+<p>"Enclosure" in the table means a closed chamber that traps heat, not a dust cover. ABS, ASA, PC and nylon shrink as they cool, and a part that cools unevenly warps off the bed or cracks between layers. A chamber that sits at 40 – 60 °C keeps the whole part warm until it's finished. Printers with a stock enclosure (Bambu P1S/X1C, Prusa Core One, Voron) handle these materials well; an open bedslinger can manage small ABS parts with a brim and no fan, and struggles with anything larger. PLA and PETG, conversely, print worse in a hot enclosure — PLA can soften and jam in the extruder — so open the door or the lid.</p>
+
+<h2>Hardened nozzles</h2>
+<p>Any filament with fibers or particles — CF, GF, glow-in-the-dark, metal-filled, some matte and wood filaments — will wear a brass nozzle out in a spool or two, visibly widening the bore and ruining dimensional accuracy. Hardened steel, tungsten carbide or ruby-tipped nozzles solve it. Fiber-filled materials also clog small nozzles; 0.5 – 0.6 mm is the safe choice, and 0.4 mm works with care.</p>

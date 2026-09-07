@@ -1,0 +1,22 @@
+<nav class="breadcrumb wrap" aria-label="Breadcrumb"><a href="/">Home</a> &rsaquo; <a href="/{{cat_slug}}/">{{cat_title}}</a> &rsaquo; <span>{{title}}</span></nav>
+<article class="wrap tool">
+  <header class="tool-head">
+    <h1>{{title}}</h1>
+    <p class="lede">{{lede}}</p>
+  </header>
+  <div class="calc" id="calc">
+    <noscript><p class="warn-box">This calculator runs entirely in your browser and needs JavaScript turned on.</p></noscript>
+{{calculator}}
+  </div>
+{{ad_after_calc}}
+  <div class="article">
+{{article}}
+  </div>
+{{ad_before_faq}}
+{{faq}}
+  <p class="updated">Last reviewed {{updated_human}}. Spotted an error or want another calculator? <a href="/contact/">Tell us</a>.</p>
+</article>
+<aside class="wrap related" aria-labelledby="related-h">
+  <h2 id="related-h">Related calculators</h2>
+  <div class="cards">{{related}}</div>
+</aside>

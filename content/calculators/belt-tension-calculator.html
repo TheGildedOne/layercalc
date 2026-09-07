@@ -1,0 +1,120 @@
+{
+  "title": "Belt Tension Calculator",
+  "page_title": "3D Printer Belt Tension Calculator – Frequency to Tension for GT2 Belts",
+  "description": "Convert belt frequency (Hz) to tension in newtons and back for GT2 belts, and convert a documented target like 110 Hz at 150 mm to your own belt span.",
+  "lede": "Pluck the belt, read the frequency with a tuner app, and see the tension in newtons — or start from a target tension and get the frequency to aim for. It also converts a documented target ('110 Hz at 150 mm') to whatever span your belt actually has.",
+  "short": "Belt frequency ⇄ tension for GT2 belts, and convert a documented Hz target to your own span.",
+  "category": "calibration",
+  "order": 60,
+  "updated": "2026-09-07",
+  "related": ["shrinkage-compensation-calculator", "flow-rate-calculator", "layer-height-calculator", "e-steps-calculator"],
+  "faq": [
+    {"q": "How tight should 3D printer belts be?", "a": "Tight enough that the belt doesn't skip or ring, loose enough not to load the bearings: for 6 mm GT2 belts on desktop printers that's typically 5–15 N of tension. As a frequency, the widely used Voron figure is 110 Hz measured over a 150 mm span, which is about 8–9 N. Your printer's documentation beats any generic number."},
+    {"q": "How do I measure belt tension with my phone?", "a": "Install a tuner or spectrum app (any guitar tuner, or Spectroid on Android), hold the phone near the middle of a free belt span, and pluck the belt like a guitar string. Read the fundamental frequency. Measure the span length between the two points where the belt is fixed or wraps a pulley, and enter both here."},
+    {"q": "What's the formula relating frequency and tension?", "a": "For a vibrating string: f = (1 ÷ 2L) × √(T ÷ μ), where L is the free span in meters, T the tension in newtons and μ the belt's mass per meter. Rearranged, T = 4 × L² × f² × μ. A 6 mm GT2 belt weighs about 8 g per meter."},
+    {"q": "Why do the two belts on a CoreXY need to match?", "a": "On CoreXY both belts drive both axes. If one is tighter, the X and Y motions have different stiffness, which shows up as skewed prints, uneven ringing and mismatched dimensions along the two diagonals. Matching them within 1–2 Hz matters more than the absolute value."},
+    {"q": "My printer's docs give a frequency for a different span. What do I do?", "a": "Frequency scales inversely with span at the same tension. If the docs say 110 Hz at 150 mm and your free span is 200 mm, the equivalent is 110 × 150 ÷ 200 = 82.5 Hz. The bottom section of the calculator does this conversion."}
+  ]
+}
+<form id="f" class="calc-form" novalidate>
+  <div class="fields">
+    <div class="field">
+      <label for="belt">Belt</label>
+      <select id="belt">
+        <option value="8.0" selected>GT2 6 mm, fiberglass core (≈8 g/m)</option>
+        <option value="11.0">GT2 6 mm, steel core (≈11 g/m)</option>
+        <option value="12.0">GT2 9 mm (≈12 g/m)</option>
+        <option value="13.5">GT2 10 mm (≈13.5 g/m)</option>
+        <option value="16.0">GT2 12 mm (≈16 g/m)</option>
+        <option value="custom">Custom</option>
+      </select>
+    </div>
+    <div class="field"><label for="mu">Belt mass per meter</label><div class="inwrap"><input type="number" id="mu" value="8.0" min="0.1" step="0.1" inputmode="decimal"><span class="unit">g/m</span></div><p class="hint">Approximate; weigh a known length for accuracy.</p></div>
+    <div class="field"><label for="span">Free belt span</label><div class="inwrap"><input type="number" id="span" value="150" min="10" step="1" inputmode="decimal"><span class="unit">mm</span></div><p class="hint">Between the two points the belt is fixed or leaves a pulley.</p></div>
+  </div>
+  <fieldset class="group">
+    <legend>Measured → tension</legend>
+    <div class="fields">
+      <div class="field"><label for="freq">Frequency you measured</label><div class="inwrap"><input type="number" id="freq" value="110" min="1" step="0.5" inputmode="decimal"><span class="unit">Hz</span></div></div>
+      <div class="result"><div class="l">Tension in the belt</div><div class="v" id="r_t">—</div><div class="s" id="r_ts"></div></div>
+    </div>
+  </fieldset>
+  <fieldset class="group">
+    <legend>Target tension → frequency</legend>
+    <div class="fields">
+      <div class="field"><label for="tt">Tension you want</label><div class="inwrap"><input type="number" id="tt" value="8" min="0.1" step="0.5" inputmode="decimal"><span class="unit">N</span></div></div>
+      <div class="result"><div class="l">Tune the belt to</div><div class="v" id="r_f">—</div><div class="s">at your span</div></div>
+    </div>
+  </fieldset>
+  <fieldset class="group">
+    <legend>Convert a documented target to your span</legend>
+    <div class="fields">
+      <div class="field"><label for="docf">Documented frequency</label><div class="inwrap"><input type="number" id="docf" value="110" min="1" step="0.5" inputmode="decimal"><span class="unit">Hz</span></div></div>
+      <div class="field"><label for="docspan">…measured over a span of</label><div class="inwrap"><input type="number" id="docspan" value="150" min="10" step="1" inputmode="decimal"><span class="unit">mm</span></div></div>
+      <div class="result"><div class="l">Equivalent at your span</div><div class="v" id="r_conv">—</div><div class="s" id="r_convs"></div></div>
+    </div>
+  </fieldset>
+  <div class="actions"><button type="button" class="btn-ghost" data-reset>Reset</button></div>
+</form>
+<script>
+(function () {
+  LC.el("belt").addEventListener("change", function () { if (this.value !== "custom") LC.el("mu").value = this.value; });
+  function calc() {
+    var mu = LC.num("mu") / 1000, L = LC.num("span") / 1000;
+    var f = LC.num("freq"), T = 4 * L * L * f * f * mu;
+    LC.out("r_t", isFinite(T) ? T.toFixed(1) + " N" : "—");
+    LC.out("r_ts", isFinite(T) ? "≈ " + (T / 9.80665 * 1000).toFixed(0) + " gf · " + (T < 4 ? "loose for a 6 mm belt" : T <= 15 ? "within the usual 5–15 N range" : "tight — check bearings and idlers") : "");
+    var tt = LC.num("tt"), ft = Math.sqrt(tt / mu) / (2 * L);
+    LC.out("r_f", isFinite(ft) ? ft.toFixed(1) + " Hz" : "—");
+    var df = LC.num("docf"), ds = LC.num("docspan") / 1000, conv = df * ds / L;
+    LC.out("r_conv", isFinite(conv) ? conv.toFixed(1) + " Hz" : "—");
+    LC.out("r_convs", isFinite(conv) ? "same tension as " + LC.fmt(df, 1) + " Hz at " + LC.fmt(ds * 1000, 0) + " mm (≈ " + (4 * ds * ds * df * df * mu).toFixed(1) + " N)" : "");
+  }
+  LC.bind("f", calc);
+})();
+</script>
+<!--ARTICLE-->
+<h2>The physics</h2>
+<p>A belt under tension between two fixed points behaves like a guitar string. Its fundamental frequency depends only on the free length, the tension and the belt's mass per unit length:</p>
+<div class="formula">f = (1 ÷ 2L) × √(T ÷ μ)        T = 4 L² f² μ<br>L in meters, T in newtons, μ in kg/m</div>
+<p>Two consequences worth knowing. Tension goes with the <em>square</em> of frequency, so 10% more Hz is 21% more tension. And at the same tension, frequency is inversely proportional to span, which is why a target quoted for one printer can't be used on another without converting — a 400 mm Ender 3 X-belt at the same tension as a 150 mm Voron span rings at less than half the frequency.</p>
+
+<div class="example">
+<h3>Worked example</h3>
+<p>6 mm fiberglass GT2 belt (8 g/m), 150 mm free span, plucked at 110 Hz.</p>
+<ul>
+  <li>T = 4 × 0.15² × 110² × 0.008 = 4 × 0.0225 × 12100 × 0.008 = <strong>8.7 N</strong> (about 890 grams-force)</li>
+  <li>The same 8.7 N on a 200 mm span: f = 110 × 150 ÷ 200 = <strong>82.5 Hz</strong></li>
+</ul>
+</div>
+
+<h2>Measuring it</h2>
+<ol>
+  <li>Move the carriage so a long, unobstructed section of belt is exposed — on a CoreXY, park the toolhead at a front corner and use the long back run; on an i3-style printer, the X belt with the head at one end.</li>
+  <li>Measure the free span between the two points where the belt is clamped or leaves a pulley or idler. This is the number people get wrong; it isn't the axis length.</li>
+  <li>Open a tuner or spectrum app. Guitar tuners work if the frequency is in their range (most accept 60–400 Hz); Spectroid or any FFT app shows the peak directly.</li>
+  <li>Pluck the belt in the middle of the span and read the fundamental. Ignore the higher harmonics; the lowest strong peak is the one.</li>
+  <li>Adjust the tensioner and repeat. On CoreXY, do both belts and match them within 1–2 Hz.</li>
+</ol>
+<p>A belt-tension gauge or a luggage scale hooked to the belt gives the tension directly, but the frequency method is free and usually more repeatable.</p>
+
+<h2>What tension to aim for</h2>
+<p>There's no universal number, and the honest answer is: use your manufacturer's figure if one exists. Some that are commonly cited:</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Printer / source</th><th>Target</th><th>≈ Tension</th></tr></thead>
+<tbody>
+<tr><td>Voron 2.4 / Trident (6 mm GT2, 150 mm span)</td><td>110 Hz</td><td>8.7 N</td></tr>
+<tr><td>Prusa MK3S/MK4 (via Prusa's belt tuning app)</td><td>≈ 85 Hz X, ≈ 75 Hz Y at their spans</td><td>varies</td></tr>
+<tr><td>Bambu Lab (X1/P1, via built-in tension routine)</td><td>firmware-guided</td><td>—</td></tr>
+<tr><td>Generic desktop, 6 mm belt</td><td>—</td><td>5 – 15 N</td></tr>
+<tr><td>Generic desktop, 9 mm belt</td><td>—</td><td>8 – 20 N</td></tr>
+</tbody></table></div>
+<p>Symptoms guide you from there. Too loose: ringing/ghosting after corners, dimensions that vary with direction, belt teeth skipping on fast moves. Too tight: a hum or whine from the motors, warm idler bearings, accelerated wear on the belt teeth, and on flimsier frames, a frame that flexes measurably. If a belt has been over-tightened for a long time, check the idlers before assuming the belt is the problem.</p>
+
+<h2>Converting a documented target</h2>
+<p>Most published figures are given as a frequency at a specific span, because that's what people measure. If your span differs, convert with:</p>
+<div class="formula">your frequency = documented frequency × documented span ÷ your span</div>
+<div class="table-wrap"><table>
+<thead><tr><th>110 Hz at 150 mm becomes…</th><th>100 mm</th><th>150 mm</th><th>200 mm</th><th>250 mm</th><th>300 mm</th><th>400 mm</th></tr></thead>
+<tbody><tr><td>same tension at this span</td><td>165 Hz</td><td>110 Hz</td><td>82.5 Hz</td><td>66 Hz</td><td>55 Hz</td><td>41 Hz</td></tr></tbody></table></div>
+<p>The belt mass cancels out of the conversion, so it works for any belt as long as both figures refer to the same belt type. When they don't — a 9 mm belt on your printer versus 6 mm in the docs — use the tension figure instead and let the calculator work out the frequency for your belt.</p>

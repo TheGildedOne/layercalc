@@ -1,0 +1,106 @@
+{
+  "title": "3D Print Time Estimator",
+  "page_title": "3D Print Time Estimator – Rough Hours and Filament Before You Slice",
+  "description": "Estimate print time and filament before slicing from model volume, infill, walls, layer height and your printer's speed class. Good for quotes and planning.",
+  "lede": "For quoting a job or deciding whether a print fits in an evening, before you've sliced it: enter the model's volume and your usual settings and get a ballpark print time and filament weight, with an honest range.",
+  "short": "Ballpark hours and grams from model volume, infill, walls and layer height — before you slice.",
+  "category": "filament",
+  "order": 40,
+  "updated": "2026-09-07",
+  "related": ["3d-print-pricing-calculator", "filament-cost-calculator", "3d-model-scale-calculator", "max-volumetric-speed-calculator"],
+  "faq": [
+    {"q": "How long does a 3D print take?", "a": "It depends almost entirely on how much plastic is laid down and how fast the printer can lay it. A small 20 g keychain takes 30–60 minutes; a 100 g figurine 4–10 hours; a 500 g helmet a day or more. Halving layer height roughly doubles the time; a fast CoreXY printer is 2–3× quicker than a stock bedslinger for the same part."},
+    {"q": "How does the estimator work without a model file?", "a": "It approximates the print as a shell (surface area × wall thickness) plus infill (the interior × infill percentage), turns that volume into extrusion time at your printer's effective speed, and adds an overhead factor for travel, acceleration and layer changes. The result is typically within ±30% of the slicer for ordinary parts."},
+    {"q": "Where do I get the model's volume and surface area?", "a": "Any slicer shows volume after loading a model (PrusaSlicer/Orca: object info panel; Cura: with a plugin). CAD programs show both volume and surface area under mass properties. If you leave surface area blank, the estimator assumes a fairly compact shape."},
+    {"q": "Why is my slicer's time different?", "a": "The slicer knows the real geometry, your acceleration limits, the exact speeds for each feature type, and how much of the time is travel. Models with lots of small islands, thin features or supports print much slower than their volume suggests. Use this estimator for quoting and planning, and let the slicer give the final figure."},
+    {"q": "What speed should I enter?", "a": "An effective average across the whole print, not the headline infill speed. Stock budget printers average 40–50 mm/s of actual extrusion; a well-tuned bedslinger 70–90; Bambu, Creality K1 and Voron-class machines 130–180 once the hotend's volumetric limit is included. The presets are a reasonable starting point."}
+  ]
+}
+<form id="f" class="calc-form" novalidate>
+  <div class="fields">
+    <div class="field"><label for="vol">Model volume</label><div class="inwrap"><input type="number" id="vol" value="60" min="0.01" step="any" inputmode="decimal"><span class="unit">cm³</span></div><p class="hint">From the slicer's object info or CAD.</p></div>
+    <div class="field"><label for="area">Surface area (optional)</label><div class="inwrap"><input type="number" id="area" value="" placeholder="estimated if blank" min="0" step="any" inputmode="decimal"><span class="unit">cm²</span></div></div>
+    <div class="field"><label for="infill">Infill</label><div class="inwrap"><input type="number" id="infill" value="15" min="0" max="100" step="1" inputmode="decimal"><span class="unit">%</span></div></div>
+    <div class="field"><label for="walls">Wall loops</label><div class="inwrap"><input type="number" id="walls" value="2" min="1" max="10" step="1" inputmode="numeric"><span class="unit">walls</span></div></div>
+    <div class="field"><label for="lh">Layer height</label><div class="inwrap"><input type="number" id="lh" value="0.2" min="0.05" step="0.01" inputmode="decimal"><span class="unit">mm</span></div></div>
+    <div class="field"><label for="lw">Line width</label><div class="inwrap"><input type="number" id="lw" value="0.45" min="0.1" step="0.01" inputmode="decimal"><span class="unit">mm</span></div></div>
+    <div class="field"><label for="profile">Printer speed class</label>
+      <select id="profile">
+        <option value="45">Stock budget bedslinger (≈45 mm/s effective)</option>
+        <option value="75">Tuned bedslinger, Prusa MK3S (≈75 mm/s)</option>
+        <option value="110" selected>Prusa MK4, Ender 3 V3, Neptune 4 (≈110 mm/s)</option>
+        <option value="150">Bambu A1/P1/X1, K1, Voron (≈150 mm/s)</option>
+        <option value="custom">Custom</option>
+      </select></div>
+    <div class="field"><label for="speed">Effective print speed</label><div class="inwrap"><input type="number" id="speed" value="110" min="5" step="5" inputmode="decimal"><span class="unit">mm/s</span></div><p class="hint">Average over the whole print.</p></div>
+    <div class="field"><label for="mat">Material</label>
+      <select id="mat"><option value="1.24" selected>PLA</option><option value="1.27">PETG</option><option value="1.04">ABS</option><option value="1.07">ASA</option><option value="1.21">TPU</option><option value="1.20">PC</option><option value="1.14">Nylon</option></select></div>
+    <div class="field"><label for="ppk">Filament price per kg (optional)</label><div class="inwrap prefix"><span class="pre" data-cur>$</span><input type="number" id="ppk" value="" placeholder="e.g. 22" min="0" step="0.01" inputmode="decimal"></div></div>
+  </div>
+  <div class="results">
+    <div class="result primary"><div class="l">Estimated print time</div><div class="v" id="r_time">—</div><div class="s" id="r_range"></div></div>
+    <div class="result"><div class="l">Filament</div><div class="v" id="r_g">—</div><div class="s" id="r_m"></div></div>
+    <div class="result"><div class="l">Plastic actually extruded</div><div class="v" id="r_ext">—</div><div class="s" id="r_split"></div></div>
+    <div class="result" id="costbox" hidden><div class="l">Material cost</div><div class="v" id="r_cost">—</div></div>
+  </div>
+  <p class="note">This is a pre-slice ballpark: expect the slicer to land within about ±30%. Supports, many small islands and thin features push real times higher.</p>
+  <div class="actions"><button type="button" class="btn-ghost" data-reset>Reset</button><span id="cur"></span></div>
+</form>
+<script>
+(function () {
+  LC.el("profile").addEventListener("change", function () { if (this.value !== "custom") LC.el("speed").value = this.value; });
+  function calc() {
+    var V = LC.num("vol") * 1000;                 // mm³
+    var A = LC.num("area"); A = isFinite(A) && A > 0 ? A * 100 : 8 * Math.pow(LC.num("vol"), 2 / 3) * 100;   // mm²
+    var infill = (LC.num("infill") || 0) / 100, walls = LC.num("walls") || 2, lh = LC.num("lh"), lw = LC.num("lw"), sp = LC.num("speed"), dens = parseFloat(LC.val("mat")), ppk = LC.num("ppk");
+    if (!(V > 0 && lh > 0 && lw > 0 && sp > 0)) { LC.out("r_time", "—"); return; }
+    var shell = Math.min(V, A * walls * lw);
+    var fill = (V - shell) * infill;
+    var ext = shell + fill;                       // mm³ extruded
+    var xs = lw * lh - lh * lh * (1 - Math.PI / 4);
+    var seconds = ext / (xs * sp) * 1.35;         // 35% overhead: travel, accel, layer changes, slow first layer
+    var hrs = seconds / 3600;
+    var grams = ext * dens / 1000, gpm = Math.PI * 0.875 * 0.875 * dens;
+    LC.out("r_time", LC.hours(hrs));
+    LC.out("r_range", "likely " + LC.hours(hrs * 0.75) + " – " + LC.hours(hrs * 1.3));
+    LC.out("r_g", LC.fmt(grams, 0) + " g");
+    LC.out("r_m", LC.fmt(grams / gpm, 1) + " m of 1.75 mm");
+    LC.out("r_ext", LC.fmt(ext / 1000, 1) + " cm³");
+    LC.out("r_split", LC.fmt(ext / V * 100, 0) + "% of the model volume · shell " + LC.fmt(shell / 1000, 1) + " + infill " + LC.fmt(fill / 1000, 1) + " cm³");
+    var hasP = isFinite(ppk) && ppk > 0;
+    LC.show("costbox", hasP);
+    if (hasP) LC.out("r_cost", LC.money(grams / 1000 * ppk));
+  }
+  LC.currencyPicker("cur");
+  LC.bind("f", calc);
+})();
+</script>
+<!--ARTICLE-->
+<h2>How the estimate is built</h2>
+<div class="formula">shell volume  = surface area × walls × line width   (capped at the model volume)<br>infill volume = (model volume − shell) × infill %<br>extruded      = shell + infill<br>time          = extruded ÷ (bead cross-section × speed) × 1.35<br>filament (g)  = extruded × density</div>
+<p>The idea is that a print is a skin plus a partial filling. The skin — walls, top and bottom — is the surface area times the wall thickness, and it's usually most of the plastic in a hollow-ish part. The filling is whatever's left times the infill percentage. Turn that volume into a length of extruded bead, divide by speed, and add 35% for everything that isn't extruding: travel moves, acceleration and deceleration at every corner, the slow first layer, and layer changes.</p>
+<p>If you don't know the surface area, the estimator assumes 8 × V^⅔ cm², which is what a moderately detailed, roughly cube-proportioned object has. A flat plate or a lattice has more; a sphere has less.</p>
+
+<div class="example">
+<h3>Worked example</h3>
+<p>A 60 cm³ figurine, 15% infill, 2 walls, 0.2 mm layers, 0.45 mm lines, on a Prusa MK4-class printer at 110 mm/s effective.</p>
+<ul>
+  <li>Surface area (estimated): 8 × 60^⅔ ≈ 123 cm² = 12,250 mm²</li>
+  <li>Shell: 12,250 × 2 × 0.45 = <strong>11.0 cm³</strong></li>
+  <li>Infill: (60 − 11) × 0.15 = <strong>7.4 cm³</strong></li>
+  <li>Extruded: 18.4 cm³ → <strong>22.8 g</strong> of PLA</li>
+  <li>Bead cross-section: 0.0814 mm²; at 110 mm/s that's 8.95 mm³/s, so 18,400 ÷ 8.95 = 2,056 s of pure extrusion</li>
+  <li>With overhead: 2,056 × 1.35 = 2,776 s ≈ <strong>46 minutes</strong>, likely 35 min – 1 h</li>
+</ul>
+</div>
+
+<h2>What moves the number most</h2>
+<ul>
+  <li><strong>Layer height.</strong> Time is nearly proportional to 1 ÷ layer height. 0.12 mm layers take about 1.7× as long as 0.2 mm; 0.28 mm about 0.7×.</li>
+  <li><strong>Speed class.</strong> The real difference between a stock Ender 3 and a Bambu P1S on the same part is 2.5–3×, and most of it is acceleration rather than top speed. The presets encode that.</li>
+  <li><strong>Walls vs infill.</strong> Going from 15% to 30% infill on a chunky part adds a lot; on a thin-walled part it adds almost nothing because there's little interior. Extra walls, on the other hand, always cost time.</li>
+  <li><strong>Geometry the estimator can't see.</strong> Many small islands per layer (a comb, a lattice), tall thin pillars where minimum layer time slows everything down, and supports all make real prints slower than the volume suggests. Add 20–50% for those.</li>
+</ul>
+
+<h2>Using it for quotes</h2>
+<p>The point of estimating before slicing is that customers ask "roughly how much?" before they send a file, and re-slicing every enquiry is slow. Take the time and grams from here into the <a href="/3d-print-pricing-calculator/">pricing calculator</a>, quote the top of the range, and refine once you've sliced the real model. The <a href="/max-volumetric-speed-calculator/">volumetric speed calculator</a> is worth a look if you're not sure what effective speed your hotend can actually sustain — on fast printers that, not the motion system, is often the limit.</p>

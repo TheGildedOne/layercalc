@@ -1,0 +1,120 @@
+{
+  "title": "Max Volumetric Speed Calculator",
+  "page_title": "Max Volumetric Speed Calculator – Flow in mm³/s and Fastest Safe Print Speed",
+  "description": "Volumetric flow (mm³/s) from layer height, line width and speed, and the fastest speed your hotend can sustain. Bambu, Prusa, Ender, Revo and Rapido presets.",
+  "lede": "See how many cubic millimeters per second your settings demand, whether your hotend can melt that fast, and the top speed you can run each layer height at before it starts under-extruding.",
+  "short": "Flow in mm³/s from your settings, and the fastest speed your hotend can sustain per layer height.",
+  "category": "calibration",
+  "order": 50,
+  "updated": "2026-09-07",
+  "related": ["layer-height-calculator", "print-time-estimator", "flow-rate-calculator", "temp-tower-generator"],
+  "faq": [
+    {"q": "How do I calculate volumetric flow rate?", "a": "Flow (mm³/s) = layer height × line width × print speed, with a small correction for the rounded edges of the extrusion. At 0.2 mm layers, 0.45 mm lines and 100 mm/s that's about 8.6 mm³/s. If your hotend tops out at 12 mm³/s, you can't usefully go faster than about 140 mm/s at those settings."},
+    {"q": "What is a good max volumetric speed?", "a": "It depends on the hotend and the material. A stock Ender 3 or V6-style hotend manages 8–12 mm³/s of PLA; Bambu Lab's stock hotend about 21; a Prusa MK4 Nextruder 15–20; Volcano-class 25; high-flow hotends like Revo HF or Rapido HF 35–40; UHF hotends 70+. PETG is 20–30% lower than PLA, TPU far lower."},
+    {"q": "What happens if I exceed it?", "a": "Under-extrusion. The extruder pushes filament in faster than the heater can melt it, pressure builds, the drive gear starts skipping or grinding, and you get thin walls, gaps in top layers and weak parts. It often looks like a clog but clears at lower speed."},
+    {"q": "Why does the slicer limit speed even though I set it higher?", "a": "PrusaSlicer, OrcaSlicer and Bambu Studio have a max volumetric speed in the filament profile and silently cap any move that would exceed it. This calculator shows the speed that cap works out to for each layer height, so you know which of your speed settings are actually doing anything."},
+    {"q": "How do I measure my hotend's real limit?", "a": "OrcaSlicer's Calibration → Max Flowrate test prints a strip with flow rising along its height; note where the surface goes matte, rough or gappy. Alternatively print a single wall at increasing speeds. Use the value just below where quality breaks, and set it in the filament profile."}
+  ]
+}
+<form id="f" class="calc-form" novalidate>
+  <div class="fields">
+    <div class="field"><label for="nozzle">Nozzle diameter</label><div class="inwrap"><input type="number" id="nozzle" value="0.4" min="0.1" step="0.05" inputmode="decimal"><span class="unit">mm</span></div></div>
+    <div class="field"><label for="lh">Layer height</label><div class="inwrap"><input type="number" id="lh" value="0.2" min="0.02" step="0.01" inputmode="decimal"><span class="unit">mm</span></div></div>
+    <div class="field"><label for="lw">Line width</label><div class="inwrap"><input type="number" id="lw" value="0.45" min="0.1" step="0.01" inputmode="decimal"><span class="unit">mm</span></div></div>
+    <div class="field"><label for="speed">Print speed</label><div class="inwrap"><input type="number" id="speed" value="150" min="1" step="5" inputmode="decimal"><span class="unit">mm/s</span></div></div>
+    <div class="field">
+      <label for="preset">Hotend limit preset (PLA)</label>
+      <select id="preset">
+        <option value="" selected>Custom / measured</option>
+        <option value="10">Stock Ender 3 / MK8 / PTFE-lined V6 (≈10)</option>
+        <option value="12">Creality Sprite (Ender 3 S1), all-metal V6 (≈12)</option>
+        <option value="15">Prusa MK3S, E3D Revo Six/Micro (≈15)</option>
+        <option value="20">Prusa MK4 Nextruder (≈20)</option>
+        <option value="21">Bambu Lab A1 / P1 / X1 stock (≈21)</option>
+        <option value="25">Volcano, Dragon HF, Creality K1 (≈25)</option>
+        <option value="30">CHT nozzle in V6/Volcano (≈30)</option>
+        <option value="40">E3D Revo HF, Rapido HF, Dragon UHF (≈40)</option>
+        <option value="75">Rapido UHF, Goliath-class (≈75)</option>
+      </select>
+      <p class="hint">Typical figures for PLA; PETG is ~25% lower, TPU much lower.</p>
+    </div>
+    <div class="field"><label for="limit">Hotend max flow</label><div class="inwrap"><input type="number" id="limit" value="15" min="0.1" step="0.5" inputmode="decimal"><span class="unit">mm³/s</span></div></div>
+  </div>
+  <div class="results">
+    <div class="result primary" id="flowbox"><div class="l">Flow at these settings</div><div class="v" id="r_flow">—</div><div class="s" id="r_verdict"></div></div>
+    <div class="result"><div class="l">Max speed at this layer height</div><div class="v" id="r_max">—</div><div class="s">before hitting the hotend limit</div></div>
+    <div class="result"><div class="l">Line width range for nozzle</div><div class="v" id="r_lw">—</div><div class="s">100–125% of nozzle diameter</div></div>
+    <div class="result"><div class="l">Layer height range</div><div class="v" id="r_lh">—</div><div class="s">25–75% of nozzle diameter</div></div>
+  </div>
+  <div class="table-wrap breakdown"><table>
+    <thead><tr><th>Layer height</th><th>Flow at your speed</th><th>Max speed at hotend limit</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table></div>
+  <div class="actions"><button type="button" class="btn-ghost" data-reset>Reset</button></div>
+</form>
+<script>
+(function () {
+  LC.el("preset").addEventListener("change", function () { if (this.value) LC.el("limit").value = this.value; });
+  function area(lh, lw) { return lw * lh - lh * lh * (1 - Math.PI / 4); }   // stadium cross-section, as slicers use
+  function calc() {
+    var noz = LC.num("nozzle"), lh = LC.num("lh"), lw = LC.num("lw"), sp = LC.num("speed"), lim = LC.num("limit");
+    var a = area(lh, lw), flow = a * sp, maxSp = lim / a;
+    LC.out("r_flow", isFinite(flow) ? flow.toFixed(1) + " mm³/s" : "—");
+    var ratio = flow / lim;
+    var cls = ratio <= 0.85 ? "ok" : ratio <= 1 ? "warn" : "bad";
+    LC.setClass("flowbox", "result primary " + cls);
+    LC.out("r_verdict", !isFinite(ratio) ? "" : ratio <= 0.85 ? LC.fmt(ratio * 100, 0) + "% of the hotend limit — comfortable" :
+      ratio <= 1 ? LC.fmt(ratio * 100, 0) + "% of the limit — right at the edge; expect trouble with PETG or long extrusions" :
+      LC.fmt(ratio * 100, 0) + "% of the limit — the slicer will cap this to " + LC.fmt(maxSp, 0) + " mm/s, or you'll under-extrude");
+    LC.out("r_max", isFinite(maxSp) ? LC.fmt(maxSp, 0) + " mm/s" : "—");
+    LC.out("r_lw", isFinite(noz) ? noz.toFixed(2) + " – " + (noz * 1.25).toFixed(2) + " mm" : "—");
+    LC.out("r_lh", isFinite(noz) ? (noz * 0.25).toFixed(2) + " – " + (noz * 0.75).toFixed(2) + " mm" : "—");
+    var rows = [];
+    [0.08, 0.1, 0.12, 0.16, 0.2, 0.24, 0.28, 0.3, 0.36, 0.4, 0.5, 0.6].forEach(function (h) {
+      if (h < noz * 0.2 || h > noz * 0.8) return;
+      var ar = area(h, lw), f = ar * sp, m = lim / ar;
+      var mark = Math.abs(h - lh) < 1e-9 ? " ◀" : "";
+      rows.push("<tr><td>" + h + " mm" + mark + "</td><td" + (f > lim ? ' class="bad"' : "") + ">" + f.toFixed(1) + " mm³/s</td><td>" + LC.fmt(m, 0) + " mm/s</td></tr>");
+    });
+    LC.html("rows", rows.join(""));
+  }
+  LC.bind("f", calc);
+})();
+</script>
+<!--ARTICLE-->
+<h2>The formula</h2>
+<div class="formula">cross-section (mm²) = line width × layer height − layer height² × (1 − π/4)<br>flow (mm³/s) = cross-section × print speed<br>max speed = hotend limit ÷ cross-section</div>
+<p>The first line is the area of an extruded bead: a rectangle with semicircular ends, which is how PrusaSlicer, OrcaSlicer and Bambu Studio model it. The simpler "height × width" overestimates by about 5–10% at normal settings. Either way the point is the same: flow rises with layer height, line width and speed together, and the hotend doesn't care which of the three you turned up.</p>
+
+<div class="example">
+<h3>Worked example</h3>
+<p>0.2 mm layers, 0.45 mm lines, 150 mm/s, on a hotend that manages 15 mm³/s.</p>
+<ul>
+  <li>Cross-section: 0.45 × 0.2 − 0.2² × 0.2146 = <strong>0.0814 mm²</strong></li>
+  <li>Flow: 0.0814 × 150 = <strong>12.2 mm³/s</strong> — 81% of the limit, fine</li>
+  <li>Max speed at this height: 15 ÷ 0.0814 = <strong>184 mm/s</strong></li>
+  <li>Same speed at 0.28 mm layers: flow 16.4 mm³/s — <strong>over the limit</strong>; the slicer would cap it to about 137 mm/s</li>
+</ul>
+</div>
+
+<h2>Why speed settings often do nothing</h2>
+<p>On a printer whose speeds have been cranked up, the volumetric limit in the filament profile is usually the real ceiling. Set 300 mm/s for infill at 0.2 × 0.45 on a 15 mm³/s hotend and the slicer quietly prints it at 184. Changing the speed setting from 300 to 250 changes nothing; changing the layer height to 0.16 changes the cap to 232 mm/s. The table above makes this visible: find your layer height, and the right-hand column is the fastest anything at that height will actually go.</p>
+<p>The same logic explains why a "fast" printer isn't fast with a low-flow hotend, and why a hotend upgrade can matter more than a motion-system upgrade. A Bambu-class machine can move at 500 mm/s, but at 21 mm³/s and 0.2 mm layers that means about 260 mm/s of actual wall speed.</p>
+
+<h2>Hotend limits by type</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Hotend</th><th>Typical max flow, PLA</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>Stock Ender 3, MK8, PTFE-lined V6</td><td>8 – 12 mm³/s</td><td>Short melt zone; PTFE limits temperature.</td></tr>
+<tr><td>All-metal V6, Creality Sprite, Revo Six / Micro</td><td>12 – 15 mm³/s</td><td>The most common "12 mm/s" figure.</td></tr>
+<tr><td>Prusa MK4 / XL Nextruder</td><td>15 – 20 mm³/s</td><td>Profiles default to 15–24 depending on filament.</td></tr>
+<tr><td>Bambu Lab A1 / P1 / X1 stock</td><td>≈ 21 mm³/s</td><td>Bambu's PLA profiles cap at 21; PETG ≈ 16.</td></tr>
+<tr><td>Volcano, Dragon HF, Creality K1 series</td><td>20 – 30 mm³/s</td><td>Longer melt zone.</td></tr>
+<tr><td>CHT-style nozzle in the above</td><td>+30 – 50%</td><td>Three-channel core melts faster; combine with a long heater block.</td></tr>
+<tr><td>Revo HF, Rapido HF, Dragon UHF</td><td>35 – 45 mm³/s</td><td>Purpose-built high flow.</td></tr>
+<tr><td>Rapido UHF, Goliath, Bambu H2D with HF nozzle</td><td>60 – 100 mm³/s</td><td>Needs an extruder and motion system to match.</td></tr>
+</tbody></table></div>
+<p>These are typical published or community-measured PLA figures and vary with temperature, nozzle diameter and filament. PETG runs 20–30% lower because it's more viscous at printing temperature; ABS/ASA are close to PLA; TPU is usually 3–8 mm³/s regardless of hotend because the extruder, not the heater, is the limit. Raising the temperature 5–10 °C buys a little more flow at some cost to stringing and strength.</p>
+
+<h2>Measuring your own limit</h2>
+<p>OrcaSlicer's Calibration → <em>Max Flowrate</em> prints a strip whose flow increases with height; look for where the surface turns matte, rough or gappy and read off the value just below. Prusa's and Bambu's profiles already contain measured limits for their own hotends. Once you have a number, set it as the filament's max volumetric speed and the slicer enforces it everywhere — which is exactly what you want, because it means every speed setting you touch afterwards is real.</p>

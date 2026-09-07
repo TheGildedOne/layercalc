@@ -1,0 +1,147 @@
+{
+  "title": "3D Model Scale & Bed Fit Calculator",
+  "page_title": "3D Model Scale Calculator – Scale to a Target Size or Fit Your Print Bed",
+  "description": "Scale a 3D model by %, to a target size, or to fit your printer's bed (Ender, Prusa, Bambu, Voron, resin presets). See new dimensions and volume change.",
+  "lede": "Enter the model's size and either a scale, a target dimension or the printer you want it to fit. Get the new dimensions, whether it fits (including rotated), and how the volume — and therefore print time and filament — changes.",
+  "short": "Scale by %, to a target size, or to fit a printer preset; see new dimensions and volume change.",
+  "category": "filament",
+  "order": 30,
+  "updated": "2026-09-07",
+  "related": ["print-time-estimator", "shrinkage-compensation-calculator", "filament-length-weight-calculator", "layer-height-calculator"],
+  "faq": [
+    {"q": "How do I scale a model to a specific size?", "a": "Divide the size you want by the size it is. A 120 mm model that should be 90 mm needs 90 ÷ 120 = 0.75, or 75%. Apply that uniformly to all three axes in the slicer's scale box, or type the target directly into the axis field — every mainstream slicer scales the others to match when uniform scaling is locked."},
+    {"q": "Why does scaling to 50% cut the weight to an eighth?", "a": "Volume scales with the cube of the linear scale. Half the size in every direction is ½ × ½ × ½ = ⅛ the volume, so roughly an eighth the filament and print time. Doubling a model uses eight times the material — the calculator shows this factor so it doesn't surprise you."},
+    {"q": "My STL imports tiny or huge. What scale fixes it?", "a": "The file was saved in inches or the slicer assumed the wrong unit: STL has no units. If it's 25.4× too small, scale by 2540%; if 25.4× too big, scale by 3.937%. Most slicers have a 'convert from inches' option that does the same thing."},
+    {"q": "Will a model fit if I rotate it?", "a": "Often. The calculator checks the footprint both ways round — a 250 × 200 mm part doesn't fit a 220 × 220 bed as-is but does on a 250 × 210 Prusa bed either way, and a long thin part can fit diagonally. It also gives the largest uniform scale that fits when it doesn't."},
+    {"q": "Does scaling affect wall thickness and tolerances?", "a": "Yes. Walls, pins, holes and clearances all scale with the model. A 2 mm wall at 50% becomes 1 mm, which may be thinner than two extrusion lines; a 5 mm hole becomes 2.5 mm. Check fits after scaling, and use the shrinkage calculator for material compensation, which is a separate, much smaller adjustment."}
+  ]
+}
+<form id="f" class="calc-form" novalidate>
+  <div class="fields">
+    <div class="field"><label for="units">Units</label><select id="units"><option value="mm" selected>millimeters</option><option value="in">inches</option></select></div>
+    <div class="field"><label for="x">Model X (width)</label><div class="inwrap"><input type="number" id="x" value="120" min="0.01" step="any" inputmode="decimal"><span class="unit" id="ux">mm</span></div></div>
+    <div class="field"><label for="y">Model Y (depth)</label><div class="inwrap"><input type="number" id="y" value="80" min="0.01" step="any" inputmode="decimal"><span class="unit" id="uy">mm</span></div></div>
+    <div class="field"><label for="z">Model Z (height)</label><div class="inwrap"><input type="number" id="z" value="150" min="0.01" step="any" inputmode="decimal"><span class="unit" id="uz">mm</span></div></div>
+  </div>
+  <div class="seg" role="radiogroup" aria-label="Scaling mode" style="margin-top:14px">
+    <label><input type="radio" name="mode" id="mode_pct" value="pct" checked><span>Scale by %</span></label>
+    <label><input type="radio" name="mode" id="mode_target" value="target"><span>Scale to a size</span></label>
+    <label><input type="radio" name="mode" id="mode_fit" value="fit"><span>Fit a printer</span></label>
+  </div>
+  <div class="fields">
+    <div class="field" data-mode="pct"><label for="pct">Scale</label><div class="inwrap"><input type="number" id="pct" value="75" min="0.01" step="any" inputmode="decimal"><span class="unit">%</span></div></div>
+    <div class="field" data-mode="target" hidden><label for="taxis">Axis</label><select id="taxis"><option value="x">X</option><option value="y">Y</option><option value="z" selected>Z</option></select></div>
+    <div class="field" data-mode="target" hidden><label for="tval">Should be</label><div class="inwrap"><input type="number" id="tval" value="100" min="0.01" step="any" inputmode="decimal"><span class="unit" id="ut">mm</span></div></div>
+    <div class="field" data-mode="fit" hidden><label for="printer">Printer</label>
+      <select id="printer">
+        <option value="220,220,250" selected>Ender 3 / V2 / S1 / V3 SE (220×220×250)</option>
+        <option value="220,220,250">Creality K1 / K1C, Sovol SV06, Kobra 2 (220×220×250)</option>
+        <option value="300,300,300">Creality K1 Max (300×300×300)</option>
+        <option value="350,350,400">Ender 5 Plus (350×350×400)</option>
+        <option value="180,180,180">Prusa Mini (180×180×180)</option>
+        <option value="250,210,210">Prusa MK3S (250×210×210)</option>
+        <option value="250,210,220">Prusa MK4 / MK4S (250×210×220)</option>
+        <option value="360,360,360">Prusa XL (360×360×360)</option>
+        <option value="180,180,180">Bambu Lab A1 mini (180×180×180)</option>
+        <option value="256,256,256">Bambu Lab A1 / P1P / P1S / X1C (256×256×256)</option>
+        <option value="350,320,325">Bambu Lab H2D (350×320×325)</option>
+        <option value="225,225,265">Elegoo Neptune 4 / 4 Pro (225×225×265)</option>
+        <option value="420,420,480">Elegoo Neptune 4 Max (420×420×480)</option>
+        <option value="250,250,260">Anycubic Kobra 3 (250×250×260)</option>
+        <option value="300,300,250">Voron 2.4 / Trident 300 (300×300×250)</option>
+        <option value="350,350,340">Voron 2.4 350 (350×350×340)</option>
+        <option value="218,123,200">Resin: Photon Mono M5s / Saturn 3 (218×123×200)</option>
+        <option value="153,87,165">Resin: Elegoo Mars 4 / Photon Mono 4 (153×87×165)</option>
+        <option value="custom">Custom</option>
+      </select></div>
+    <div class="field" data-mode="fit" hidden><label for="bx">Bed X</label><div class="inwrap"><input type="number" id="bx" value="220" min="1" step="1" inputmode="decimal"><span class="unit">mm</span></div></div>
+    <div class="field" data-mode="fit" hidden><label for="by">Bed Y</label><div class="inwrap"><input type="number" id="by" value="220" min="1" step="1" inputmode="decimal"><span class="unit">mm</span></div></div>
+    <div class="field" data-mode="fit" hidden><label for="bz">Max height</label><div class="inwrap"><input type="number" id="bz" value="250" min="1" step="1" inputmode="decimal"><span class="unit">mm</span></div></div>
+    <div class="field" data-mode="fit" hidden><label for="margin">Margin from bed edges</label><div class="inwrap"><input type="number" id="margin" value="5" min="0" step="1" inputmode="decimal"><span class="unit">mm</span></div><p class="hint">Brim, skirt, clips.</p></div>
+  </div>
+  <div class="results">
+    <div class="result primary"><div class="l">Scale to apply</div><div class="v" id="r_scale">—</div><div class="s" id="r_scales"></div></div>
+    <div class="result"><div class="l">New size (X × Y × Z)</div><div class="v" id="r_dims">—</div><div class="s" id="r_dimsalt"></div></div>
+    <div class="result"><div class="l">Volume, filament &amp; time</div><div class="v" id="r_vol">—</div><div class="s">of the original</div></div>
+    <div class="result" id="fitbox" hidden><div class="l">Fits the bed?</div><div class="v" id="r_fit">—</div><div class="s" id="r_fits"></div></div>
+  </div>
+  <div class="actions"><button type="button" class="btn-ghost" data-reset>Reset</button></div>
+</form>
+<script>
+(function () {
+  var applyMode = LC.modePanels("mode");
+  LC.el("printer").addEventListener("change", function () {
+    if (this.value === "custom") return;
+    var p = this.value.split(","); LC.el("bx").value = p[0]; LC.el("by").value = p[1]; LC.el("bz").value = p[2];
+  });
+  function calc() {
+    var mode = applyMode();
+    var inch = LC.val("units") === "in", k = inch ? 25.4 : 1, u = inch ? "in" : "mm";
+    ["ux", "uy", "uz", "ut"].forEach(function (id) { LC.out(id, u); });
+    var x = LC.num("x") * k, y = LC.num("y") * k, z = LC.num("z") * k;   // work in mm
+    var bx = LC.num("bx") - 2 * (LC.num("margin") || 0), by = LC.num("by") - 2 * (LC.num("margin") || 0), bz = LC.num("bz");
+    function fits(sx, sy, sz) { return (sx <= bx && sy <= by && sz <= bz) || (sy <= bx && sx <= by && sz <= bz); }
+    var scale, note = "";
+    if (mode === "pct") scale = LC.num("pct") / 100;
+    else if (mode === "target") {
+      var axis = LC.val("taxis"), cur = axis === "x" ? x : axis === "y" ? y : z;
+      scale = LC.num("tval") * k / cur;
+    } else {
+      var s1 = Math.min(bx / x, by / y, bz / z), s2 = Math.min(bx / y, by / x, bz / z);
+      scale = Math.min(1, Math.max(s1, s2));
+      note = scale >= 1 ? "already fits at 100%" : "largest uniform scale that fits" + (s2 > s1 ? " (rotated 90°)" : "");
+    }
+    if (!isFinite(scale) || scale <= 0) { LC.out("r_scale", "—"); return; }
+    var nx = x * scale, ny = y * scale, nz = z * scale;
+    var f = function (v) { return LC.fmt(v / k, inch ? 3 : 1); };
+    LC.out("r_scale", LC.fmt(scale * 100, 2) + " %");
+    LC.out("r_scales", note || ("factor " + LC.fmt(scale, 4) + (Math.abs(scale - 25.4) < 0.01 ? " — inches → mm fix" : Math.abs(scale - 1 / 25.4) < 0.0001 ? " — mm → inches fix" : "")));
+    LC.out("r_dims", f(nx) + " × " + f(ny) + " × " + f(nz) + " " + u);
+    LC.out("r_dimsalt", inch ? LC.fmt(nx, 1) + " × " + LC.fmt(ny, 1) + " × " + LC.fmt(nz, 1) + " mm" : LC.fmt(nx / 25.4, 2) + " × " + LC.fmt(ny / 25.4, 2) + " × " + LC.fmt(nz / 25.4, 2) + " in");
+    var vf = Math.pow(scale, 3);
+    LC.out("r_vol", (vf >= 1 ? "× " + LC.fmt(vf, 2) : LC.fmt(vf * 100, 1) + " %"));
+    var showFit = mode === "fit" && isFinite(bx) && isFinite(by) && isFinite(bz);
+    LC.show("fitbox", showFit);
+    if (showFit) {
+      var ok = fits(nx, ny, nz), okRot = !(nx <= bx && ny <= by && nz <= bz) && ok;
+      LC.setClass("fitbox", "result " + (ok ? "ok" : "bad"));
+      LC.out("r_fit", ok ? (okRot ? "Yes, rotated 90°" : "Yes") : "No");
+      var over = [];
+      if (!ok) { if (nz > bz) over.push("height " + LC.fmt(nz, 1) + " > " + bz + " mm"); if (Math.min(nx, ny) > Math.min(bx, by) || Math.max(nx, ny) > Math.max(bx, by)) over.push("footprint " + LC.fmt(nx, 0) + " × " + LC.fmt(ny, 0) + " > " + bx + " × " + by + " mm usable"); }
+      LC.out("r_fits", ok ? "usable area " + bx + " × " + by + " × " + bz + " mm" + (mode !== "fit" ? "" : "") : over.join(" · ") + " — max scale " + LC.fmt(Math.min(bx / x, by / y, bz / z, Math.max(bx / y, by / x)) * 100, 1) + "%");
+    }
+  }
+  LC.bind("f", calc);
+})();
+</script>
+<!--ARTICLE-->
+<h2>The formulas</h2>
+<div class="formula">scale = target size ÷ current size<br>new dimension = current × scale<br>volume factor = scale³      (also filament and, roughly, print time)<br>largest scale that fits = min(bed X ÷ model X, bed Y ÷ model Y, height ÷ model Z), tried both ways round</div>
+
+<div class="example">
+<h3>Worked example</h3>
+<p>A 120 × 80 × 150 mm figure should be 100 mm tall.</p>
+<ul>
+  <li>Scale: 100 ÷ 150 = <strong>66.67%</strong></li>
+  <li>New size: 80 × 53.3 × 100 mm</li>
+  <li>Volume: 0.6667³ = <strong>29.6%</strong> of the original — a print that took 10 hours now takes about 3</li>
+</ul>
+<p>The same figure at 200% would be 240 × 160 × 300 mm and need eight times the filament. That's usually the moment people discover it doesn't fit the printer, which is what the fit mode is for.</p>
+</div>
+
+<h2>Three ways to scale in the slicer</h2>
+<p>Every mainstream slicer (PrusaSlicer, OrcaSlicer, Bambu Studio, Cura) has an object panel with a percentage box and three size boxes, and a padlock or "uniform" toggle. With uniform scaling on, typing either the percentage or a target size in one axis scales all three; the calculator's output is what to type. Turn uniform scaling <em>off</em> only when you deliberately want to stretch one axis — for instance, making a box taller without widening it, or applying different <a href="/shrinkage-compensation-calculator/">shrinkage compensation</a> to Z than XY.</p>
+
+<h2>Fitting the bed</h2>
+<p>Bed presets are the manufacturer's nominal build volumes. Two things reduce what you can actually use:</p>
+<ul>
+  <li><strong>The margin.</strong> A brim adds 5–8 mm all round; a skirt a couple of millimeters; glass clips or a purge line can steal a strip along one edge. The default 5 mm margin is a sensible minimum; use 8–10 if you print with brims.</li>
+  <li><strong>The corners.</strong> Some printers (notably Bambu machines) reserve a corner for the purge/wipe area, and many bedslingers can't reach the last few millimeters at the back. If a print is within a few percent of the limit, check the slicer's actual bed outline.</li>
+</ul>
+<p>The calculator checks the footprint as-is and rotated 90°, and gives the largest uniform scale that fits when neither works. It doesn't try diagonal placement: a long thin part can often go corner-to-corner (the diagonal of a 220 mm bed is 311 mm), so if the rotated check fails narrowly, try 45° in the slicer.</p>
+
+<h2>Things that don't survive scaling</h2>
+<p>Scaling a model scales everything in it, including the features you'd rather stayed put. Walls thinner than two extrusion widths (about 0.9 mm with a 0.4 mm nozzle) print badly or not at all; scaling a model with 2 mm walls below 45% gets you there. Holes for screws and bearings, snap-fit clearances and threads all change size — a model designed for M3 screws scaled to 80% wants M2.5. Text and fine details below about 0.5 mm vanish. When a scaled part must fit real hardware, it's better to open the model and resize the body while leaving the holes alone, or to scale and then use the <a href="/shrinkage-compensation-calculator/">hole compensation</a> to bring the holes back.</p>
+
+<h2>Unit mix-ups</h2>
+<p>STL files carry no units. A model designed in inches and opened by a slicer that assumes millimeters comes in 25.4 times too small; the reverse comes in 25.4 times too large. If a model imports as a speck or a monolith, that's almost always what happened, and the fix is exactly a 2540% or 3.937% scale — the calculator flags it when the factor matches. 3MF and STEP files include units and don't have this problem.</p>

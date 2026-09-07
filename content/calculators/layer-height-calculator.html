@@ -1,0 +1,131 @@
+{
+  "title": "Layer Height Calculator (Magic Numbers)",
+  "page_title": "Magic Layer Height Calculator – Optimal Layer Heights for Your Z Axis & Nozzle",
+  "description": "Find the magic layer heights that land on full Z motor steps for your lead screw and motor, filtered by nozzle size. Ender, Prusa, Voron and custom presets.",
+  "lede": "Pick your Z-axis lead screw and motor and see which layer heights land on whole motor steps — the so-called magic numbers — filtered to the range your nozzle prints well.",
+  "short": "Layer heights that land on full Z motor steps for your lead screw, filtered by nozzle size.",
+  "category": "calibration",
+  "order": 40,
+  "updated": "2026-09-07",
+  "related": ["max-volumetric-speed-calculator", "print-time-estimator", "flow-rate-calculator", "e-steps-calculator"],
+  "faq": [
+    {"q": "What are magic layer heights?", "a": "Layer heights that are an exact multiple of the distance one full motor step moves the Z axis. On an Ender 3 (8 mm lead screw, 200-step motor) a full step is 0.04 mm, so 0.12, 0.16, 0.20, 0.24 and 0.28 mm are magic and 0.15 or 0.25 are not. Landing on full steps avoids relying on microstep positions, which hold position less precisely."},
+    {"q": "What's the formula for a full step in mm?", "a": "Full step = lead screw travel per revolution ÷ (motor steps per revolution × gear ratio). For the common T8x8 screw and 1.8° motor that's 8 ÷ 200 = 0.04 mm. For a T8x2 screw it's 0.01 mm, and for a 0.9° motor on an 8 mm lead it's 0.02 mm."},
+    {"q": "Does this matter on a Bambu Lab or Prusa printer?", "a": "Much less. Modern printers with good drivers, stiff Z axes and belted or fine-lead Z move microsteps accurately, and Bambu's and Prusa's default profiles use heights like 0.2 that happen to be magic anyway. It matters most on budget lead-screw printers with older drivers, where non-magic heights can cause faint banding."},
+    {"q": "What layer heights work with a 0.4 mm nozzle?", "a": "Roughly 25–75% of the nozzle diameter: 0.10–0.30 mm. Below that the melt is squeezed too thin and flow becomes unreliable; above it the bead doesn't bond well to the layer below. 0.6 mm nozzles work from 0.15–0.45 mm, 0.2 mm nozzles from 0.05–0.15 mm."},
+    {"q": "Should the first layer be a magic number too?", "a": "Ideally yes, and it should also be at least the Z full step so the nozzle can reach it. A first layer of 0.2 mm on a 0.04 mm full-step machine is fine; 0.3 mm (7.5 steps) is not. The calculator's list applies to first layers as well."}
+  ]
+}
+<form id="f" class="calc-form" novalidate>
+  <div class="fields">
+    <div class="field">
+      <label for="preset">Z axis preset</label>
+      <select id="preset">
+        <option value="8,200,16,1" selected>Ender 3 / V2 / S1, Neptune, Sovol — T8x8 lead screw, 1.8° motor</option>
+        <option value="8,200,16,1">Prusa MK3S / MK4 — T8x8, 1.8°</option>
+        <option value="4,200,16,1">T8x4 lead screw, 1.8° motor</option>
+        <option value="2,200,16,1">T8x2 lead screw, 1.8° motor</option>
+        <option value="8,400,16,1">T8x8 lead screw, 0.9° motor</option>
+        <option value="40,200,16,5">Voron 2.4 — belted Z, 80:16 gearing (8 mm/rev effective)</option>
+        <option value="40,200,16,1">Voron Trident / belt-driven Z, 20T GT2 (40 mm/rev)</option>
+        <option value="8,200,16,1">Bambu Lab A1 / P1 / X1 — 8 mm lead screws</option>
+        <option value="custom">Custom (enter below)</option>
+      </select>
+    </div>
+    <div class="field"><label for="lead">Travel per motor revolution</label><div class="inwrap"><input type="number" id="lead" value="8" min="0.01" step="any" inputmode="decimal"><span class="unit">mm/rev</span></div><p class="hint">Lead screw lead (not pitch), or belt pitch × pulley teeth.</p></div>
+    <div class="field"><label for="steps">Motor full steps per revolution</label><select id="steps"><option value="200" selected>200 (1.8° motor)</option><option value="400">400 (0.9° motor)</option></select></div>
+    <div class="field"><label for="ratio">Gear reduction</label><div class="inwrap"><input type="number" id="ratio" value="1" min="0.01" step="any" inputmode="decimal"><span class="unit">: 1</span></div><p class="hint">1 for direct drive. Voron 2.4 is 5 (80:16).</p></div>
+    <div class="field"><label for="micro">Microstepping</label><select id="micro"><option value="16" selected>16</option><option value="32">32</option><option value="64">64</option><option value="128">128</option><option value="256">256</option><option value="8">8</option></select></div>
+    <div class="field"><label for="nozzle">Nozzle diameter</label><select id="nozzle"><option value="0.2">0.2 mm</option><option value="0.25">0.25 mm</option><option value="0.3">0.3 mm</option><option value="0.4" selected>0.4 mm</option><option value="0.5">0.5 mm</option><option value="0.6">0.6 mm</option><option value="0.8">0.8 mm</option><option value="1.0">1.0 mm</option></select></div>
+  </div>
+  <div class="results">
+    <div class="result primary"><div class="l">Full step moves Z by</div><div class="v" id="r_full">—</div><div class="s" id="r_micro"></div></div>
+    <div class="result"><div class="l">Recommended range for nozzle</div><div class="v" id="r_range">—</div><div class="s">25–75% of nozzle diameter</div></div>
+  </div>
+  <div class="table-wrap breakdown"><table>
+    <thead><tr><th>Layer height</th><th>Full steps</th><th>Suitability</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table></div>
+  <div id="note" class="note" hidden></div>
+  <div class="actions"><button type="button" class="btn-ghost" data-reset>Reset</button></div>
+</form>
+<script>
+(function () {
+  var preset = LC.el("preset");
+  preset.addEventListener("change", function () {
+    if (this.value === "custom") return;
+    var p = this.value.split(",");
+    LC.el("lead").value = p[0]; LC.el("steps").value = p[1]; LC.el("micro").value = p[2]; LC.el("ratio").value = p[3];
+  });
+  function calc() {
+    var lead = LC.num("lead"), steps = LC.num("steps"), micro = LC.num("micro"), ratio = LC.num("ratio") || 1, noz = parseFloat(LC.val("nozzle"));
+    var full = lead / (steps * ratio), ms = full / micro;
+    if (!isFinite(full) || full <= 0) { LC.out("r_full", "—"); return; }
+    LC.out("r_full", (full * 1000).toFixed(1) + " µm");
+    LC.out("r_micro", "= " + full.toFixed(4) + " mm · one microstep = " + ms.toFixed(5) + " mm at 1/" + micro);
+    var lo = noz * 0.25, hi = noz * 0.75, max = noz * 0.8;
+    LC.out("r_range", lo.toFixed(2) + " – " + hi.toFixed(2) + " mm");
+    var rows = [], n = 1, count = 0;
+    while (n * full <= max + 1e-9 && count < 60) {
+      var h = n * full;
+      if (h >= 0.04 - 1e-9) {
+        var cls = h < lo ? "" : h <= hi ? "ok" : "warn";
+        var label = h < lo ? "very fine — slow, flow may be inconsistent" : h <= hi ? "recommended" : "coarse — weaker layer bonding";
+        rows.push('<tr><td><strong>' + h.toFixed(3).replace(/0+$/, "").replace(/\.$/, "") + ' mm</strong></td><td>' + n + '</td><td class="' + cls + '">' + label + '</td></tr>');
+        count++;
+      }
+      n++;
+    }
+    if (full < 0.011) {
+      // very fine steps: every reasonable layer height is magic, so show the usual round numbers instead
+      rows = [];
+      [0.05, 0.06, 0.08, 0.1, 0.12, 0.15, 0.16, 0.2, 0.24, 0.25, 0.28, 0.3, 0.32, 0.36, 0.4, 0.45, 0.5, 0.6].forEach(function (h) {
+        if (h > max + 1e-9) return;
+        var k = h / full, whole = Math.abs(k - Math.round(k)) < 1e-6;
+        var cls = h < lo ? "" : h <= hi ? "ok" : "warn";
+        rows.push('<tr><td><strong>' + h + ' mm</strong></td><td>' + (whole ? Math.round(k) : k.toFixed(2) + " (not whole)") + '</td><td class="' + cls + '">' + (h < lo ? "very fine" : h <= hi ? "recommended" : "coarse") + '</td></tr>');
+      });
+      LC.show("note", true);
+      LC.html("note", "A full step moves your Z by only " + (full * 1000).toFixed(1) + " µm, so almost any layer height you'd choose lands within a step. Pick by nozzle and quality; magic numbers aren't a constraint on this machine.");
+    } else { LC.show("note", false); }
+    LC.html("rows", rows.join("") || '<tr><td colspan="3">No full-step multiples fall within range — check the inputs.</td></tr>');
+  }
+  LC.bind("f", calc);
+})();
+</script>
+<!--ARTICLE-->
+<h2>The formula</h2>
+<div class="formula">full step (mm) = travel per revolution ÷ (motor steps per revolution × gear ratio)<br>magic layer heights = full step × 1, 2, 3, …</div>
+<p>A stepper motor has 200 (1.8°) or 400 (0.9°) physical positions per turn where the rotor is held firmly by the magnet poles. Between them the driver interpolates microsteps by feeding the coils fractional currents, which positions the rotor less accurately and with less holding torque. If every layer starts on a full step, the layer spacing is as consistent as the screw allows; if it starts on a microstep, the actual height can vary by a few microns from layer to layer, which shows up as faint banding on glossy walls.</p>
+
+<div class="example">
+<h3>Worked example</h3>
+<p>Ender 3: T8x8 lead screw (8 mm per revolution), 1.8° motor (200 steps), direct drive.</p>
+<ul>
+  <li>Full step: 8 ÷ 200 = <strong>0.04 mm</strong></li>
+  <li>Magic heights: 0.04, 0.08, <strong>0.12, 0.16, 0.20, 0.24, 0.28</strong>, 0.32</li>
+  <li>Not magic: 0.10 (2.5 steps), 0.15 (3.75), 0.25 (6.25), 0.30 (7.5)</li>
+</ul>
+<p>That's why "0.2 mm" is the near-universal default — it's magic on almost every lead-screw printer — and why 0.15 mm prints sometimes look slightly worse than 0.16 mm despite being finer.</p>
+</div>
+
+<h2>Finding your lead screw</h2>
+<p>Lead is the distance the nut travels per revolution and is what matters here. It's often confused with pitch, the distance between adjacent threads. A "T8x8" screw has 8 mm lead from four 2 mm-pitch starts; a "T8x2" has a single start with 2 mm pitch and 2 mm lead. Count the thread starts at the end of the screw: four starts on an 8 mm screw with 2 mm pitch means 8 mm lead.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Printer</th><th>Z drive</th><th>Full step</th></tr></thead>
+<tbody>
+<tr><td>Ender 3 family, Ender 5, CR-10, Neptune 3/4, Sovol SV06, Kobra</td><td>T8x8, 1.8°</td><td>0.04 mm</td></tr>
+<tr><td>Prusa MK3S, MK4, Mini</td><td>T8x8, 1.8°</td><td>0.04 mm</td></tr>
+<tr><td>Bambu Lab A1, P1, X1</td><td>8 mm lead screws, 1.8°</td><td>0.04 mm</td></tr>
+<tr><td>Voron 2.4</td><td>Belted, 80:16 reduction, 20T GT2</td><td>0.04 mm</td></tr>
+<tr><td>Voron Trident, many custom CoreXY</td><td>T8x4 or T8x2</td><td>0.02 / 0.01 mm</td></tr>
+<tr><td>Older printers on M5 threaded rod</td><td>0.8 mm pitch, 1.8°</td><td>0.004 mm</td></tr>
+</tbody></table></div>
+<p>If you're on Klipper, the numbers are in <code>printer.cfg</code> under <code>[stepper_z]</code>: <code>rotation_distance</code> is the travel per revolution, <code>gear_ratio</code> is the reduction, and <code>full_steps_per_rotation</code> defaults to 200.</p>
+
+<h2>How much this really matters</h2>
+<p>Honestly: less than it used to, and less than the internet suggests. Modern stepper drivers (TMC2209 and up) interpolate microsteps smoothly, well-built Z axes with anti-backlash nuts take up most of the slop, and printers with a fine 2 mm lead have a 0.01 mm full step that makes every sensible height magic. If your printer is a Bambu, a Prusa, or a well-tuned Voron, choose the layer height by nozzle and detail and don't think about it.</p>
+<p>It matters most on budget lead-screw printers with 0.04 mm steps, older A4988 drivers, and glossy filaments that show every ripple. There, choosing 0.16 or 0.24 instead of 0.15 or 0.25 is free and visible.</p>
+
+<h2>Choosing within the magic set</h2>
+<p>Layer height trades detail for time roughly linearly — 0.12 mm takes about 1.7× as long as 0.20 mm — and the nozzle sets the sensible bounds. Below about 25% of the nozzle diameter the melt is squeezed so thin that pressure and flow get erratic; above about 75% the bead can't be pressed firmly onto the layer below and layer adhesion suffers. For strength, bigger layers within that range bond better; for surface finish, smaller. The <a href="/max-volumetric-speed-calculator/">volumetric speed calculator</a> shows how fast you can print each height before the hotend becomes the limit.</p>
