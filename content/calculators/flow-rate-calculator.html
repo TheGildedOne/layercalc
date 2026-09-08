@@ -121,13 +121,14 @@
 <p>Set it in the <em>filament</em> profile, not the print profile. Flow is a property of the material and the temperature, and different spools of the same material can differ by a few percent.</p>
 
 <h2>Order of operations</h2>
-<p>Flow interacts with everything upstream of it. Calibrate in this order and each step stays fixed:</p>
+<p>Flow interacts with everything upstream of it. One order that works:</p>
 <ol>
   <li><a href="/e-steps-calculator/">E-steps / rotation distance</a> — once per extruder, so the right length of filament is delivered.</li>
   <li><strong>Flow</strong> — this page, once per material.</li>
   <li>Temperature and retraction — with a <a href="/temp-tower-generator/">test tower</a>, per material.</li>
   <li><a href="/shrinkage-compensation-calculator/">Dimensional accuracy</a> — scale and hole compensation, per material.</li>
 </ol>
+<p>Worth knowing that OrcaSlicer's own guide uses a different order &mdash; temperature, then max volumetric speed, then pressure advance, then flow, then retraction, then tolerance. The disagreement is genuine: flow depends on temperature, so tuning it first means redoing it if the temperature moves; but over-extrusion reads like printing too hot, so a temperature tower with flow badly out can mislead. Both converge if you go round twice. If you use Orca, follow Orca's order, because its tests are built for that sequence. The <a href="/temp-tower-generator/">tower generator</a> discusses this in more detail.</p>
 
 <h2>How much to trust this number</h2>
 <p>Worth being straight about: the leading community reference disagrees with this method. Ellis' Print Tuning Guide lists <em>"tuning extrusion multiplier by measuring 1&ndash;2 cube walls"</em> as the <strong>first entry</strong> on its Misconceptions page. The reasoning is sound and worth understanding rather than ignoring:</p>

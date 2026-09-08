@@ -441,6 +441,29 @@ group("temp-tower-generator", () => {
   check("layer count", p.text("r_detail"), /300 layers/);
   p.pick("test_rdist");
   check("retraction mode relabels", p.text("r_summary"), /0\.2 → 1\.2 mm/);
+  // --- cooling fan tower: M106 per section, and no blanket fan-on at layer 2
+  p.pick("test_fan");
+  check("fan defaults", p.text("r_summary"), /0 → 100 %/);
+  p.doc.getElementById("preview").dispatchEvent({ type: "click" });
+  check("fan test emits M106 steps", p.text("gpre"), /M106 S0/);
+
+  // --- print speed tower: feedrate changes per section
+  p.pick("test_speed");
+  check("speed defaults", p.text("r_summary"), /40 → 140 mm\/s/);
+
+  // --- pressure advance: firmware-specific command
+  p.pick("test_pa");
+  check("PA firmware picker shown", p.hidden("pabox"), false);
+  check("PA defaults", p.text("r_summary"), /0 → 0\.05/);
+  p.doc.getElementById("preview").dispatchEvent({ type: "click" });
+  check("klipper PA command", p.text("gpre"), /SET_PRESSURE_ADVANCE ADVANCE=0/);
+  p.set("pafw", "marlin");
+  p.doc.getElementById("preview").dispatchEvent({ type: "click" });
+  check("marlin PA command", p.text("gpre"), /M900 K0/);
+  // the firmware picker is hidden again for other tests
+  p.pick("test_temp");
+  check("PA picker hidden for temp", p.hidden("pabox"), true);
+
   // a gap too wide for the bed must warn
   p.pick("test_temp").set("gap", 210);
   check("oversize footprint warns", p.hidden("warn"), false);

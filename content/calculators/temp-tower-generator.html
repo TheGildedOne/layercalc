@@ -1,19 +1,21 @@
 {
   "title": "Temp Tower & Retraction Tower G-code Generator",
-  "page_title": "Temperature & Retraction Tower G-code Generator",
-  "description": "Generate a ready-to-print temperature tower or retraction test as G-code in your browser. Set bed size, nozzle, start value and step; download and print.",
-  "lede": "Set your printer's bed, nozzle and layer height, choose what to test — temperature, retraction distance or retraction speed — and download a G-code file that changes the value every few millimeters. No slicer plugins, no post-processing scripts.",
-  "short": "Download a ready-to-print temperature or retraction test tower as G-code, generated for your printer.",
+  "page_title": "Calibration Tower G-code Generator – Six Tests",
+  "description": "Generate calibration towers as G-code in your browser: temperature, retraction, cooling fan, print speed or pressure advance. No slicer plugin needed.",
+  "lede": "Choose what to test — temperature, retraction distance or speed, cooling fan, print speed or pressure advance — and download a G-code file that steps the value every few millimetres. Six tests, no slicer plugin, no post-processing script, works with any slicer or none.",
+  "short": "Six calibration towers as downloadable G-code: temperature, retraction, fan, speed and pressure advance.",
   "category": "calibration",
   "order": 70,
-  "updated": "2026-09-07",
+  "updated": "2026-09-08",
   "related": ["flow-rate-calculator", "e-steps-calculator", "max-volumetric-speed-calculator", "filament-settings-reference"],
   "faq": [
     {"q": "How does a temperature tower work?", "a": "It's a tall print divided into sections, each printed at a different nozzle temperature. Comparing the sections shows where layer bonding, stringing, overhangs and surface finish are best for that filament. This generator prints two thin pillars with a gap between them, so each section also shows how much the filament strings when the nozzle travels across the gap."},
     {"q": "What temperature range should I test?", "a": "Start at the top of the manufacturer's range and step down 5 °C per section: PLA 230 → 200, PETG 250 → 220, ABS/ASA 260 → 230, TPU 235 → 205. Six sections of 5 °C covers 25 degrees. Print the hottest section first — at the bottom — so bed adhesion gets the strongest bond."},
     {"q": "What retraction settings should I test?", "a": "Direct drive: distance 0.2 to 1.5 mm in 0.2–0.3 mm steps, speed 20–45 mm/s. Bowden: distance 2 to 7 mm in 1 mm steps, speed 25–60 mm/s. Test distance first at a fixed speed, then speed at the best distance. Find the lowest values that eliminate strings between the pillars; more retraction than needed causes clogs and blobs."},
     {"q": "Will this work on my printer?", "a": "It produces standard G-code (G0/G1, M104, M140, M106, M83) that Marlin, Klipper, RepRapFirmware and their derivatives all accept. The built-in start sequence homes and heats; if your printer needs a custom start (Klipper PRINT_START macros, purge lines, bed mesh loading), paste it in the custom start G-code box. Always preview the file in your slicer or a G-code viewer before printing."},
-    {"q": "Why not just use a slicer plugin?", "a": "Plugins are slicer-specific, break between versions, and need post-processing scripts that many people find fiddly. A generated file is the same test every time, works with any slicer or none, and you can keep it and reprint it for every new spool."}
+    {"q": "Why not just use a slicer plugin?", "a": "Plugins are slicer-specific, break between versions, and need post-processing scripts that many people find fiddly. A generated file is the same test every time, works with any slicer or none, and you can keep it and reprint it for every new spool. It also covers two tests no mainstream slicer has built in: a cooling fan tower and a print speed tower."},
+    {"q": "Which calibration tests does OrcaSlicer not have?", "a": "A cooling fan tower and a print speed tower. Orca covers temperature, flow rate, pressure advance, retraction, tolerance, max volumetric speed and VFA, and where it has a test you should generally prefer it because it applies the result for you. Fan and speed are the gaps this generator fills, along with working for people who do not use Orca at all."},
+    {"q": "Is this a good pressure advance test?", "a": "It is a usable one, not the best one. A tower steps the value every few millimetres and you look for the section with the crispest corners and least bulging. A dedicated PA pattern with deliberate fast-slow speed transitions shows the effect far more clearly, so use OrcaSlicer's built-in test or Klipper's TUNING_TOWER if you can. This is for when you cannot: a different slicer, or a printer you drive by dropping files on an SD card."}
   ]
 }
 <form id="f" class="calc-form" novalidate>
@@ -21,6 +23,17 @@
     <label><input type="radio" name="test" id="test_temp" value="temp" checked><span>Temperature tower</span></label>
     <label><input type="radio" name="test" id="test_rdist" value="rdist"><span>Retraction distance</span></label>
     <label><input type="radio" name="test" id="test_rspeed" value="rspeed"><span>Retraction speed</span></label>
+    <label><input type="radio" name="test" id="test_fan" value="fan"><span>Cooling fan</span></label>
+    <label><input type="radio" name="test" id="test_speed" value="speed"><span>Print speed</span></label>
+    <label><input type="radio" name="test" id="test_pa" value="pa"><span>Pressure advance</span></label>
+  </div>
+  <div class="field" id="pabox" data-pa hidden>
+    <label for="pafw">Pressure advance firmware</label>
+    <select id="pafw">
+      <option value="klipper" selected>Klipper &mdash; SET_PRESSURE_ADVANCE</option>
+      <option value="marlin">Marlin / RepRapFirmware &mdash; M900 K</option>
+    </select>
+    <p class="hint">Marlin needs LIN_ADVANCE enabled in firmware. Values are typically 0&ndash;0.1 for direct drive, 0&ndash;1.0 for Bowden.</p>
   </div>
   <fieldset class="group">
     <legend>Printer</legend>
@@ -92,7 +105,10 @@
   var LABELS = {
     temp:   { start: "Start temperature (bottom section)", unit: "°C", head: "Nozzle temperature", defaults: [230, -5], templabel: "Nozzle temperature (unused — set by sections)" },
     rdist:  { start: "Start retraction distance", unit: "mm", head: "Retraction distance", defaults: [0.2, 0.2], templabel: "Nozzle temperature" },
-    rspeed: { start: "Start retraction speed", unit: "mm/s", head: "Retraction speed", defaults: [15, 10], templabel: "Nozzle temperature" }
+    rspeed: { start: "Start retraction speed", unit: "mm/s", head: "Retraction speed", defaults: [15, 10], templabel: "Nozzle temperature" },
+    fan:    { start: "Start fan speed", unit: "%", head: "Fan speed", defaults: [0, 20], templabel: "Nozzle temperature" },
+    speed:  { start: "Start print speed", unit: "mm/s", head: "Print speed", defaults: [40, 20], templabel: "Nozzle temperature" },
+    pa:     { start: "Start pressure advance", unit: "", head: "Pressure advance", defaults: [0, 0.01], templabel: "Nozzle temperature" }
   };
   var lastTest = null, gcode = "", filename = "tower.gcode";
   function num(x, d) {
@@ -117,7 +133,9 @@
     var test = testType(), L = LABELS[test];
     LC.out("startlabel", L.start); LC.out("startunit", L.unit); LC.out("stepunit", L.unit); LC.out("valhead", L.head);
     LC.out("templabel", L.templabel);
-    LC.out("temphint", test === "temp" ? "Each section sets its own temperature." : "Used for the whole retraction test.");
+    LC.out("temphint", test === "temp" ? "Each section sets its own temperature." : "Held constant for the whole test.");
+    var paPanels = document.querySelectorAll("[data-pa]");
+    for (var pi = 0; pi < paPanels.length; pi++) paPanels[pi].hidden = test !== "pa";
     var bedx = LC.num("bedx"), bedy = LC.num("bedy"), center = LC.checked("center");
     var noz = LC.num("noz"), fd = parseFloat(LC.val("fd")), lh = LC.num("lh"), lw = LC.num("lw");
     var speed = LC.num("speed"), travel = LC.num("travel"), temp = LC.num("temp"), bed = LC.num("bed"), fan = LC.num("fan");
@@ -145,8 +163,10 @@
     var t0 = test === "temp" ? values[0] : temp;
     var F = { print: Math.round(speed * 60), first: Math.round(Math.min(speed, 25) * 60), travel: Math.round(travel * 60) };
 
+
     var g = [];
-    g.push("; LayerCalc " + (test === "temp" ? "temperature tower" : test === "rdist" ? "retraction distance tower" : "retraction speed tower"));
+    var TESTNAME = { temp: "temperature tower", rdist: "retraction distance tower", rspeed: "retraction speed tower", fan: "cooling fan tower", speed: "print speed tower", pa: "pressure advance tower" };
+    g.push("; LayerCalc " + TESTNAME[test]);
     g.push("; generated " + new Date().toISOString().slice(0, 10) + " at layercalc.com/temp-tower-generator/");
     g.push("; nozzle " + noz + "mm, filament " + fd + "mm, layer " + lh + "mm, line " + lw + "mm, " + n + " sections x " + sh + "mm");
     values.forEach(function (v, i) { g.push("; section " + (i + 1) + " (" + num(i * sh, 1) + "-" + num((i + 1) * sh, 1) + " mm): " + num(v, 2) + " " + L.unit); });
@@ -171,7 +191,8 @@
     g.push("G1 Z5 F" + F.travel);
 
     var lastX = null, lastY = null, retracted = false;
-    var curRet = retBase, curRetSpd = retSpdBase;
+    var curRet = retBase, curRetSpd = retSpdBase, curSpeed = speed, curFan = fan;
+    var paFw = LC.val("pafw") || "klipper";
 
     function travelTo(x, y, z) {
       var dist = lastX == null ? 999 : Math.hypot(x - lastX, y - lastY);
@@ -203,11 +224,18 @@
         g.push(";SECTION " + (s + 1) + ": " + num(v, 2) + " " + L.unit);
         if (test === "temp") g.push("M104 S" + Math.round(v));
         else if (test === "rdist") curRet = v;
-        else curRetSpd = v;
+        else if (test === "rspeed") curRetSpd = v;
+        else if (test === "fan") { curFan = Math.max(0, Math.min(100, v)); g.push("M106 S" + Math.round(curFan * 2.55)); }
+        else if (test === "speed") curSpeed = Math.max(1, v);
+        else if (test === "pa") {
+          g.push(paFw === "marlin" ? "M900 K" + num(v, 4)
+                                   : "SET_PRESSURE_ADVANCE ADVANCE=" + num(v, 4));
+        }
       }
-      if (i === 1 && fan > 0) g.push("M106 S" + Math.round(fan * 2.55));
+      // The fan test drives cooling itself; every other test just turns it on at layer 2.
+      if (test !== "fan" && i === 1 && fan > 0) g.push("M106 S" + Math.round(fan * 2.55));
       g.push("G1 Z" + num(z) + " F" + F.travel);
-      var f = i === 0 ? F.first : F.print;
+      var f = i === 0 ? F.first : Math.round(curSpeed * 60);
       for (var p = 0; p < 2; p++) {
         var px = pillars[p][0], py = pillars[p][1];
         if (i === 0) for (var b = brimLoops - 1; b >= 0; b--) square(px, py, size / 2 + lw * (b + 0.5), f);
@@ -235,7 +263,7 @@
     // rough time: total extrusion path ÷ speed + travel
     var perLayerPath = 2 * (walls * 4 * size) + (walls > 0 ? 2 * gap : 0);
     estMin = (layers * perLayerPath / speed + layers * gap / travel * 2) / 60 * 1.3;
-    LC.out("r_summary", n + " sections · " + num(totalH, 0) + " mm tall · " + values[0] + " → " + num(values[n - 1], 2) + " " + L.unit);
+    LC.out("r_summary", (n + " sections · " + num(totalH, 0) + " mm tall · " + num(values[0], 2) + " → " + num(values[n - 1], 2) + " " + L.unit).trim());
     LC.out("r_detail", layers + " layers · about " + LC.hours(estMin / 60) + " · " + (gcode.length / 1024).toFixed(0) + " KB");
     filename = "layercalc-" + test + "-tower-" + num(values[0], 1) + "-to-" + num(values[n - 1], 1) + ".gcode";
     LC.show("warn", warns.length > 0); LC.html("warn", warns.join("<br>"));
@@ -269,6 +297,30 @@
   <li>For <strong>retraction speed</strong>, faster usually helps up to a point where the extruder skips or the filament grinds; use the fastest section that still looks clean.</li>
 </ol>
 
+<h2>What each test tells you</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Test</th><th>What changes per section</th><th>What to look for</th></tr></thead>
+<tbody>
+<tr><td>Temperature</td><td><code>M104</code></td><td>Layer bonding (try snapping a pillar), stringing across the gap, surface gloss, corner bulge.</td></tr>
+<tr><td>Retraction distance</td><td>Retract length on every travel</td><td>The first section where strings disappear. More than that risks clogs.</td></tr>
+<tr><td>Retraction speed</td><td>Retract feedrate</td><td>The fastest section that is still clean, before the extruder skips or grinds.</td></tr>
+<tr><td>Cooling fan</td><td><code>M106</code></td><td>Overhang and corner sharpness against layer adhesion. More cooling looks better and bonds worse.</td></tr>
+<tr><td>Print speed</td><td>Feedrate on extrusion moves</td><td>Where walls start to thin, corners round off, or ringing appears.</td></tr>
+<tr><td>Pressure advance</td><td><code>SET_PRESSURE_ADVANCE</code> or <code>M900 K</code></td><td>Corner bulge and thin patches just after corners.</td></tr>
+</tbody></table></div>
+
+<h2>Where this fits alongside your slicer</h2>
+<p>If you use OrcaSlicer, use its built-in calibration for temperature, flow rate, pressure advance, retraction, tolerance and max volumetric speed. They are good tests and Orca applies the result to your profile for you, which this cannot.</p>
+<p>Two things this does that no mainstream slicer has built in:</p>
+<ul>
+  <li><strong>A cooling fan tower.</strong> Fan speed is the main lever on the trade between overhang quality and layer adhesion, and it is material-specific &mdash; PETG and ABS in particular. Nobody ships a test for it.</li>
+  <li><strong>A print speed tower.</strong> Useful for finding where quality actually breaks on your machine, rather than trusting a profile number.</li>
+</ul>
+<p>And it works when a slicer's built-in test is not an option: a different slicer, a printer you feed from an SD card, or a machine whose profile you would rather not touch.</p>
+
+<h2>A note on the pressure advance test</h2>
+<p>A tower is a usable pressure advance test but not the best one. It steps the value every few millimetres and you compare corners between sections. A purpose-built PA pattern with deliberate fast-slow speed transitions makes the effect far more obvious, because pressure advance is about what happens when the extruder <em>changes</em> speed. If OrcaSlicer's built-in test or Klipper's <code>TUNING_TOWER</code> is available to you, prefer them. This is the fallback, and the page would rather say so than pretend otherwise.</p>
+
 <h2>Suggested sequences</h2>
 <div class="table-wrap"><table>
 <thead><tr><th>Test</th><th>Material / setup</th><th>Start</th><th>Step</th><th>Sections</th></tr></thead>
@@ -283,6 +335,11 @@
 <tr><td>Retraction speed</td><td>Bowden</td><td>20 mm/s</td><td>+10</td><td>5 (20 → 60)</td></tr>
 </tbody></table></div>
 <p>Do temperature first, then retraction distance at the chosen temperature, then retraction speed at the chosen distance. Flow should already be calibrated with the <a href="/flow-rate-calculator/">flow rate calculator</a>; if it isn't, over-extrusion will masquerade as "too hot".</p>
+
+<h2>What order to calibrate in</h2>
+<p>There is no single agreed order, and it is worth knowing that the two most-cited ones differ. OrcaSlicer's guide runs <strong>temperature &rarr; max volumetric speed &rarr; pressure advance &rarr; flow &rarr; retraction &rarr; tolerance</strong>. The order used elsewhere on this site puts extruder calibration first and flow before temperature.</p>
+<p>The disagreement is real and the reasoning cuts both ways. Flow depends on temperature, so tuning flow at a temperature you then change means doing it twice &mdash; which argues for temperature first. But over-extrusion looks a lot like printing too hot, so reading a temperature tower with flow badly out can mislead you &mdash; which argues for flow first. Both orders converge if you go round twice, which in practice is what people do.</p>
+<p>If you use OrcaSlicer, follow Orca's order; its tests are built for that sequence. Otherwise the practical minimum is: get the extruder delivering the right length of filament, then temperature, then flow, then retraction, and re-check flow if you moved the temperature much.</p>
 
 <h2>Before you print</h2>
 <ul>
