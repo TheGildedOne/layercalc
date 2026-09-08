@@ -53,7 +53,7 @@ MONETIZATION = {
         "hub": "",            # on the home page and category pages
     },
     # Google Analytics 4 measurement ID, e.g. "G-XXXXXXXXXX". Optional.
-    "ga4_id": "",
+    "ga4_id": "G-38ZP28C97M",
     "contact_email": "hello@layercalc.com",
 }
 
