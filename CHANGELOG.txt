@@ -1,0 +1,234 @@
+LAYERCALC - BUILD LOG
+=====================================================================
+Site:  https://layercalc.com
+Repo:  https://github.com/TheGildedOne/layercalc  (public, MIT)
+Built: 7-8 September 2026
+
+15 free 3D printing calculators. Static site, no server, no database.
+Only recurring cost is the domain.
+
+
+---------------------------------------------------------------------
+7 SEPTEMBER - BUILD AND LAUNCH
+---------------------------------------------------------------------
+
+948e096  Initial build - 15 calculators
+  Cost:        filament cost, print pricing (with Etsy/eBay fees),
+               resin cost, electricity cost
+  Calibration: e-steps, flow rate, shrinkage, layer height,
+               volumetric speed, belt tension, tower generator
+  Filament:    filament remaining, length/weight, model scale,
+               print time estimator
+  Plus a filament settings & drying reference, and about / contact /
+  privacy / terms pages.
+
+  Architecture: a dependency-free Python build script emits static
+  HTML; check.py validates before anything deploys; GitHub Actions
+  builds and publishes to GitHub Pages; IndexNow pings on each deploy.
+  Every page carries its formula, a worked example and an FAQ.
+
+7b3cd2b  Home page redesign
+  Manrope headings (self-hosted, no third-party font request), hero
+  with live client-side tool search, icon cards, sticky frosted
+  header, three-column footer.
+
+2306449  Google Analytics 4 enabled (G-38ZP28C97M)
+  Privacy page rewrites itself to describe the cookies when analytics
+  or ads are switched on.
+
+e5fffc2  SEO: shortened page titles
+  16 of 24 titles were over ~60 characters and truncated in Google,
+  cutting off the differentiating half. All brought under 60.
+
+5592c37  Category pages given real content
+  Were ~290 words of navigation; now 614-792 words of orientation.
+
+eaf723d  MIT license
+  Unblocks awesome-list submissions and open-source communities.
+
+  Also on the 7th (not code): domain bought and DNS configured at
+  Cloudflare, GitHub Pages enabled with a custom domain and enforced
+  HTTPS, Google Search Console verified with the sitemap submitted,
+  Bing Webmaster imported, IndexNow key registered.
+
+
+---------------------------------------------------------------------
+8 SEPTEMBER - REDDIT FEEDBACK
+---------------------------------------------------------------------
+
+8a03c62  Acted on the first community feedback
+  Every claim verified against primary sources before changing
+  anything. Three were genuine errors:
+
+  * FEP wear was counted per print. It is per peel cycle, and one
+    peel is one layer - so a 2,000-layer print wears film about ten
+    times as much as a 200-layer one. On the worked example this
+    moved film from $0.13 to $2.67, making it the second-largest
+    cost in the job.
+  * The Bambu AMS description was wrong. It does not simply track
+    from a full spool; it divides filament length fed by RFID-tag
+    revolutions to infer the spool's current diameter.
+  * The layer height page implied magic numbers always help. Prusa's
+    own forum calls the concept "largely for early 3D printers with
+    old design Stepper Drivers" and "not a big issue with Prusa
+    Printers".
+
+  Resin calculator also gained ml/L/g/kg input with density
+  conversion, configurable IPA use, and optional LCD amortisation.
+
+  tests/ created - a dependency-free DOM shim that runs each built
+  page's real script and asserts on rendered output. 101 checks,
+  wired into CI so a wrong formula fails the deploy.
+
+
+---------------------------------------------------------------------
+8 SEPTEMBER - COMPETITOR RESEARCH PASSES
+---------------------------------------------------------------------
+
+6b44a75  Adopted documented procedures, borrowed two features
+  * Flow rate: Ellis' Print Tuning Guide lists "tuning extrusion
+    multiplier by measuring 1-2 cube walls" as its FIRST
+    misconception - which was exactly and only our method. The page
+    now computes, live from your own numbers, how much a 0.02 mm
+    calliper error moves the result (4.2% on a 0.48 mm wall), and
+    points at the top-surface method instead.
+  * E-steps: Klipper documents its own procedure - 70 mm mark,
+    50 mm extruded at F60, three decimals, repeat if off by >2 mm.
+    We were applying Marlin's convention throughout. Selecting
+    Klipper now switches to its documented figures.
+  * Prints per spool (from SpoolMath / CrunchMilk), waste- and
+    failure-adjusted: a 1 kg spool and a 50 g print is 18, not 20.
+  * G-code header parsing (from calc3dprint). Reads filament weight
+    and print time from a pasted slicer header - PrusaSlicer, Orca,
+    Bambu and Cura formats - straight into the pricing calculator.
+
+80b5969  Layer height calculator rebuilt
+  Checked printpal.io and grandpacad directly: both take a lead screw
+  and a motor angle and return a list of multiples. Nothing else.
+  Reframed the page to answer "what layer height should I use?":
+  * Stair-stepping - cusp height and step width at any slope angle,
+    plus an inverse solve for a target smoothness. A vertical wall
+    has zero deviation at any layer height; a 15 deg slope at 0.2 mm
+    steps 0.75 mm and looks terraced.
+  * Flow-aware relative print time.
+  * Feature fit - 5 mm at 0.3 mm layers prints as 4.8 or 5.1.
+  * Magic numbers kept but demoted, with a verdict conditioned on
+    driver type and mesh settings.
+
+a97dde1  Remaining calculators - one was actively wrong
+  * SHRINKAGE BUG. OrcaSlicer's field takes the MEASURED percentage
+    (99.45), not the scale factor (100.55). They are reciprocals, so
+    following our advice scaled the part the wrong way and roughly
+    doubled the error. Now a slicer selector gives the one right
+    value for the one right field.
+  * Volumetric speed: generates Ellis' extrude-only test commands
+    for your filament diameter, plus a safety margin because bench
+    figures read high.
+  * Belt tension: CoreXY belt matching, and a note that the
+    vibrating-string model ignores bending stiffness so short spans
+    read high.
+  * Model scale: bed fit now evaluated in every mode (it was gated
+    to the one mode where the scale is chosen to fit, so it could
+    never fail), diagonal placement, and layer quantisation.
+  * Print time: reads the slicer's own figures from a pasted header.
+
+0eb59aa  Electricity and filament calculators
+  I had called these "just unit conversions". Each was assuming an
+  input was exact when it is not:
+  * Electricity: warm-up modelled separately from steady state. On
+    an 8-hour print heating is 2% of the energy; on a 15-minute
+    print it is 50%. Idle draw added - 8 W left on 24/7 costs
+    $10.51/yr, over half what the printing itself costs.
+  * Length/weight: weight scales with diameter SQUARED, so a
+    +/-0.02 mm spool tolerance is +/-2.3% on 1.75 mm - larger than
+    the gap between several material densities. Now shown, and a
+    measured diameter can override the nominal.
+  * Filament remaining: a geometric method for spools you cannot
+    take off the printer. Taking the annulus ratio against a full
+    spool cancels the packing factor, which is the reason naive
+    geometric methods are unreliable.
+
+d6ec206  Tower generator - three more tests
+  Orca's built-in calibration covers temperature, flow, pressure
+  advance, retraction, tolerance and volumetric speed. Two genuine
+  gaps in every mainstream slicer, now generated here:
+  * Cooling fan tower - the main lever on the overhang vs adhesion
+    trade, and material-specific. Nothing ships a test for it.
+  * Print speed tower.
+  Plus pressure advance (Klipper SET_PRESSURE_ADVANCE / Marlin
+  M900 K), with an honest note that a dedicated PA pattern reads
+  better than a tower.
+  Also stopped asserting our calibration order as the only one -
+  Orca's guide differs, both are defensible, and the pages say so.
+
+24ea20e  SEO audit of the site itself
+  * Heading hierarchy: card grids are h3 and sat directly under the
+    h1 on category pages and the 404, skipping a level. Fixed.
+  * Sitemap lastmod was stamping the build date on hub pages, so
+    every deploy claimed they had changed. A lastmod that always
+    moves teaches crawlers to ignore it. Hubs now inherit the newest
+    date of the content they list; a no-op rebuild produces a
+    byte-identical sitemap.
+  * Authorship added to structured data (author, publisher,
+    datePublished, dateModified).
+  * docs/SEO.md records what is deliberately NOT done and why.
+
+  Two findings worth remembering: FAQ rich results were deprecated
+  in May 2026 (schema still worth keeping for AI Overviews, but it
+  produces no expanded listing), and llms.txt is close to useless -
+  most such files are never requested and Google has said it does
+  not support the format.
+
+
+---------------------------------------------------------------------
+WHERE THINGS STAND
+---------------------------------------------------------------------
+
+  25 pages live, all returning 200
+  201 calculator tests passing, wired into CI
+  1,255 build-time validation checks
+  ~6 KB per page gzipped
+  Zero broken links, zero orphans
+  HTTPS enforced, redirects correct, indexed by Google and Bing
+
+  Bugs found and fixed across the day: 3 genuine errors, one of
+  which (the Orca shrinkage reciprocal) was actively making users'
+  prints worse.
+
+  The recurring lesson: the arithmetic was almost never wrong. What
+  was wrong was an input silently assumed exact, a slicer field
+  whose semantics we had not checked, or a position stated more
+  firmly than the sources justified.
+
+
+---------------------------------------------------------------------
+OUTSTANDING
+---------------------------------------------------------------------
+
+  * Nine drafted Reddit posts, unused. Post one every 3-4 days,
+    one tool at a time, and reply to everything.
+  * Check Search Console's query report in ~3 weeks. Queries sitting
+    on page 2-3 are the cheapest wins - editing an existing page
+    beats writing a new one.
+  * Apply to AdSense around early October, once there is a month of
+    history and real traffic. One field in build.py; steps in
+    docs/ADS.md.
+  * Confirm the domain is on auto-renew. It is the only way the
+    site can actually go down.
+
+
+---------------------------------------------------------------------
+TO CHANGE ANYTHING
+---------------------------------------------------------------------
+
+  cd D:\\UsefulToolsSite
+  python build.py && python check.py && node tests/run.js
+  git add -A && git commit -m "..." && git push
+
+  Live in about two minutes. check.py and the tests both gate the
+  deploy, so a broken page or a wrong formula cannot ship.
+
+  README.md      - layout, how to add a calculator
+  docs/DEPLOY.md - repo, domain, DNS, search consoles
+  docs/ADS.md    - switching on AdSense
+  docs/SEO.md    - what is done and what is deliberately skipped
