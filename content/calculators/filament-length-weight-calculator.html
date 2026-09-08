@@ -6,7 +6,7 @@
   "short": "Meters ⇄ grams ⇄ cm³ for any filament and diameter, plus a grams-per-meter reference table.",
   "category": "filament",
   "order": 20,
-  "updated": "2026-09-07",
+  "updated": "2026-09-08",
   "related": ["filament-remaining-calculator", "filament-cost-calculator", "print-time-estimator", "filament-settings-reference"],
   "faq": [
     {"q": "How much does 1 meter of filament weigh?", "a": "For 1.75 mm filament: PLA about 2.98 g, PETG 3.05 g, ABS 2.50 g, ASA 2.57 g, TPU 2.91 g, nylon 2.74 g. For 2.85 mm multiply by about 2.65 — PLA is 7.91 g per meter. The formula is π × (diameter ÷ 2)² × density."},
@@ -28,7 +28,8 @@
       </select>
     </div>
     <div class="field"><label for="dens">Density</label><div class="inwrap"><input type="number" id="dens" value="1.24" min="0.1" step="0.01" inputmode="decimal"><span class="unit">g/cm³</span></div></div>
-    <div class="field"><label for="dia">Diameter</label><select id="dia"><option value="1.75" selected>1.75 mm</option><option value="2.85">2.85 mm</option></select></div>
+    <div class="field"><label for="dia">Nominal diameter</label><select id="dia"><option value="1.75" selected>1.75 mm</option><option value="2.85">2.85 mm</option></select></div>
+    <div class="field"><label for="meas">Measured diameter (optional)</label><div class="inwrap"><input type="number" id="meas" value="" placeholder="e.g. 1.74" min="0.5" max="4" step="0.01" inputmode="decimal"><span class="unit">mm</span></div><p class="hint">Average a few calliper readings along the strand. Overrides the nominal.</p></div>
     <div class="field">
       <label for="known">I know the</label>
       <select id="known"><option value="g" selected>weight (grams)</option><option value="m">length (meters)</option><option value="v">volume (cm³)</option></select>
@@ -41,6 +42,7 @@
     <div class="result"><div class="l">Length</div><div class="v" id="r_m">—</div></div>
     <div class="result"><div class="l">Volume</div><div class="v" id="r_v">—</div></div>
     <div class="result"><div class="l">This material</div><div class="v" id="r_gpm">—</div><div class="s" id="r_mpk"></div></div>
+    <div class="result" id="tolbox"><div class="l">Diameter tolerance</div><div class="v" id="r_tol">—</div><div class="s" id="r_tols"></div></div>
     <div class="result" id="costbox" hidden><div class="l">Cost</div><div class="v" id="r_cost">—</div><div class="s" id="r_costm"></div></div>
   </div>
   <div class="actions"><button type="button" class="btn-ghost" data-reset>Reset</button><span id="cur"></span></div>
@@ -49,7 +51,9 @@
 (function () {
   LC.el("mat").addEventListener("change", function () { if (this.value !== "custom") LC.el("dens").value = this.value; });
   function calc() {
-    var dens = LC.num("dens"), d = parseFloat(LC.val("dia")), known = LC.val("known"), v = LC.num("val"), ppk = LC.num("ppk");
+    var dens = LC.num("dens"), known = LC.val("known"), v = LC.num("val"), ppk = LC.num("ppk");
+    var nominal = parseFloat(LC.val("dia")), measured = LC.num("meas");
+    var d = (isFinite(measured) && measured > 0) ? measured : nominal;
     LC.out("valunit", known === "g" ? "g" : known === "m" ? "m" : "cm³");
     var areaCm2 = Math.PI * Math.pow(d / 20, 2);           // cross-section in cm²
     var gpm = areaCm2 * 100 * dens;                          // grams per meter
@@ -62,6 +66,16 @@
     LC.out("r_v", isFinite(vol) ? LC.fmt(vol, 2) + " cm³" : "—");
     LC.out("r_gpm", isFinite(gpm) ? LC.fmt(gpm, 3) + " g/m" : "—");
     LC.out("r_mpk", isFinite(gpm) ? LC.fmt(1000 / gpm, 0) + " m per kg · " + LC.fmt(1 / dens, 3) + " cm³ per g" : "");
+    // Weight goes with the square of diameter, so filament tolerance is a bigger
+    // error than the decimal places here suggest. Show it rather than imply precision.
+    var tolMm = 0.02;
+    var tolPct = (Math.pow(d + tolMm, 2) / (d * d) - 1) * 100;
+    LC.out("r_tol", "±" + tolPct.toFixed(1) + " %");
+    LC.setClass("tolbox", "result " + (tolPct > 3 ? "warn" : ""));
+    LC.out("r_tols", "a ±0.02 mm spool tolerance on " + d.toFixed(2) + " mm"
+      + (isFinite(measured) && measured > 0 ? " (measured)" : " (nominal)")
+      + " moves the weight this much");
+
     var hasPrice = isFinite(ppk) && ppk > 0;
     LC.show("costbox", hasPrice);
     if (hasPrice) { LC.out("r_cost", LC.money(g / 1000 * ppk)); LC.out("r_costm", LC.money(gpm / 1000 * ppk, 3) + " per meter"); }
@@ -104,6 +118,12 @@
   <li>At $24/kg the material is 0.128 × 24 = <strong>$3.07</strong></li>
 </ul>
 </div>
+
+<h2>How precise is this really?</h2>
+<p>The arithmetic is exact. The inputs are not, and one of them matters more than people expect: <strong>weight scales with the square of the diameter</strong>, so a small diameter error becomes a larger weight error.</p>
+<div class="formula">weight error = (measured ± tolerance)&sup2; ÷ nominal&sup2; &minus; 1</div>
+<p>Good filament holds ±0.02 mm; budget filament ±0.05 mm. On 1.75 mm, ±0.02 mm is about ±2.3% in weight, and ±0.05 mm is nearly ±6%. That is larger than the difference between many of the densities in the table below, which is why the calculator shows the figure alongside the answer.</p>
+<p>If it matters, measure. Take calliper readings at several points along a metre of filament, average them, and put that in the measured diameter field. Doing the same in your slicer's filament profile improves its own estimates for the same reason.</p>
 
 <h2>When density matters</h2>
 <p>Most of the time a generic density is fine, but three cases bite. <strong>Filled filaments</strong> (carbon fiber, glass, wood, metal) are denser — metal-filled PLA can be 2.0–4.0 g/cm³, so a "1 kg" spool holds a fraction of the usual length. <strong>Foaming lightweight PLA</strong> is the opposite: about 1.2 g/cm³ on the spool but 0.5–0.6 after it expands in the hotend, so slicer weight estimates are only right if the profile's density matches what's on the reel. And <strong>flexible filaments</strong> vary between makers (1.15–1.25). If a spool's weight and the slicer's length disagree by more than a few percent, the density in the profile is the first suspect.</p>

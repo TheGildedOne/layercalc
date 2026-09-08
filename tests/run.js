@@ -173,11 +173,35 @@ group("resin-print-cost-calculator", () => {
 
 group("3d-printer-electricity-cost-calculator", () => {
   const p = load("3d-printer-electricity-cost-calculator");
-  check("8 h at 120 W, $0.15", p.text("r_print"), "$0.14");
-  check("kWh", p.text("r_kwh"), /0\.96 kWh/);
+  // Warm-up is modelled separately: 330 W for 4 min, then 120 W for the rest.
+  // 0.022 + 0.952 = 0.974 kWh -> $0.146
+  check("8 h incl. warm-up", p.text("r_print"), "$0.15");
+  check("kWh incl. warm-up", p.text("r_kwh"), /0\.97 kWh/);
+  check("warm-up share of a long print", p.text("r_warm"), "2 %");
+  check("says heating is minor here", p.text("r_warms"), /small part of a print this long/);
   check("per 24 h", p.text("r_day"), "$0.43");
+
+  // On a 15-minute print, heating is half the energy
+  p.set("hrs", 0.25);
+  check("warm-up dominates a short print", p.text("r_warm"), "50 %");
+  check("and says so", p.text("r_warms"), /heating dominates/);
+  p.set("hrs", 8);
+
+  // with no warm-up entered it reduces to the simple model
+  p.set("warmmin", 0);
+  check("no warm-up = flat model", p.text("r_print"), "$0.14");
+  check("no warm-up kWh", p.text("r_kwh"), /0\.96 kWh/);
+  p.set("warmmin", 4);
+
+  // idle draw: 8 W for 8 h/day is 23 kWh a year
+  check("idle hidden until entered", p.hidden("idlebox"), true);
+  p.set("idleh", 8);
+  check("idle cost per year", p.text("r_idle"), "$3.50");
+  p.set("idleh", 0);
+
+  // zero steady draw still has the warm-up
   p.set("watts", 0);
-  check("zero watts", p.text("r_print"), "$0.00");
+  check("zero steady watts keeps warm-up", p.text("r_print"), "$0.003");
 });
 
 /* ----------------------------------------------------------- calibration */
@@ -435,6 +459,16 @@ group("filament-remaining-calculator", () => {
   p.set("need", 500);
   check("not enough", p.text("r_fit"), "No");
   check("shortfall stated", p.text("r_fits"), /short by 80 g/);
+  // geometric method: annulus ratio, so packing factor and width cancel
+  check("geometry needs an outer diameter", p.text("r_geo"), "—");
+  p.set("od", 150);
+  check("150 mm roll on a 95/200 spool", p.text("r_geo"), "435 g");
+  check("shows fraction and gap to the scale", p.text("r_geos"), /44% of a full roll .* 15 g from the weighed figure/);
+  // nonsense geometry must be caught, not silently produce a number
+  p.set("od", 50);
+  check("outer smaller than core", p.text("r_geo"), "check the numbers");
+  p.set("od", "");
+
   // tare heavier than the spool is a user error, and must say so
   p.set("need", "").set("gross", 100);
   check("tare too heavy warns", p.hidden("warn"), false);
@@ -450,9 +484,22 @@ group("filament-length-weight-calculator", () => {
   check("100 m PLA -> grams", p.text("r_g"), "298.3 g");
   p.set("known", "v").set("val", 100);
   check("100 cm³ PLA -> grams", p.text("r_g"), "124 g");
-  // 2.85 mm is 2.65x the cross-section
+  // weight goes with diameter squared, so tolerance matters more than it looks
+  p.set("known", "g").set("val", 100);
+  check("tolerance on 1.75 mm", p.text("r_tol"), "±2.3 %");
+  check("tolerance explained", p.text("r_tols"), /nominal/);
+
+  // a measured diameter overrides the nominal and changes the answer
+  p.set("meas", 1.74);
+  check("measured diameter used", p.text("r_tols"), /1\.74 mm \(measured\)/);
+  check("measured changes length", p.text("r_m"), /33\.9\d m/);
+  p.set("meas", "");
+  check("back to nominal", p.text("r_m"), "33.53 m");
+
+  // 2.85 mm is 2.65x the cross-section, and proportionally less tolerance-sensitive
   p.set("known", "g").set("val", 1000).set("dia", "2.85");
   check("1 kg of 2.85 mm PLA", p.text("r_m"), /126\.\d+ m/);
+  check("thicker filament less sensitive", p.text("r_tol"), "±1.4 %");
 });
 
 group("3d-model-scale-calculator", () => {

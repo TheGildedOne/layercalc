@@ -6,7 +6,7 @@
   "short": "Power cost per print, per hour, per month and per year from wattage and your kWh price.",
   "category": "cost",
   "order": 40,
-  "updated": "2026-09-07",
+  "updated": "2026-09-08",
   "related": ["3d-print-pricing-calculator", "filament-cost-calculator", "resin-print-cost-calculator", "print-time-estimator"],
   "faq": [
     {"q": "How much electricity does a 3D printer use?", "a": "A typical desktop FDM printer averages 80–150 W while printing PLA — the heated bed is most of it. Enclosed printers running ABS or ASA with the bed at 100 °C average 150–250 W. Resin printers use 40–80 W. At $0.15/kWh a 10-hour PLA print on a 120 W printer costs about 18 cents."},
@@ -49,12 +49,18 @@
     <div class="field"><label for="watts">Average power draw</label><div class="inwrap"><input type="number" id="watts" value="120" min="0" step="1" inputmode="decimal"><span class="unit">W</span></div></div>
     <div class="field"><label for="hrs">Print time</label><div class="inwrap"><input type="number" id="hrs" value="8" min="0" step="0.1" inputmode="decimal"><span class="unit">hours</span></div></div>
     <div class="field"><label for="rate">Electricity price</label><div class="inwrap prefix"><span class="pre" data-cur>$</span><input type="number" id="rate" value="0.15" min="0" step="0.001" inputmode="decimal"></div><p class="hint">Per kWh, from your bill.</p></div>
+    <div class="field"><label for="peak">Warm-up power draw</label><div class="inwrap"><input type="number" id="peak" value="330" min="0" step="10" inputmode="decimal"><span class="unit">W</span></div><p class="hint">Bed and hotend heating flat out. 250&ndash;400 W is typical.</p></div>
+    <div class="field"><label for="warmmin">Warm-up time</label><div class="inwrap"><input type="number" id="warmmin" value="4" min="0" step="0.5" inputmode="decimal"><span class="unit">min</span></div><p class="hint">Until the bed reaches temperature. Longer for ABS.</p></div>
+    <div class="field"><label for="idle">Idle draw</label><div class="inwrap"><input type="number" id="idle" value="8" min="0" step="1" inputmode="decimal"><span class="unit">W</span></div><p class="hint">Powered on, not printing. Usually 5&ndash;15 W.</p></div>
+    <div class="field"><label for="idleh">Left switched on</label><div class="inwrap"><input type="number" id="idleh" value="0" min="0" max="24" step="1" inputmode="decimal"><span class="unit">h/day</span></div><p class="hint">Hours per day powered but not printing. 0 if you switch it off.</p></div>
     <div class="field"><label for="weekly">Printing per week</label><div class="inwrap"><input type="number" id="weekly" value="20" min="0" step="1" inputmode="decimal"><span class="unit">hours</span></div><p class="hint">For the monthly and yearly figures.</p></div>
   </div>
   <div class="results">
     <div class="result primary"><div class="l">Cost of this print</div><div class="v" id="r_print">—</div><div class="s" id="r_kwh"></div></div>
     <div class="result"><div class="l">Per hour</div><div class="v" id="r_hour">—</div></div>
     <div class="result"><div class="l">Per 24 hours</div><div class="v" id="r_day">—</div></div>
+    <div class="result" id="warmbox"><div class="l">Warm-up share of this print</div><div class="v" id="r_warm">—</div><div class="s" id="r_warms"></div></div>
+    <div class="result" id="idlebox" hidden><div class="l">Idle cost per year</div><div class="v" id="r_idle">—</div><div class="s" id="r_idles"></div></div>
     <div class="result"><div class="l">Per month</div><div class="v" id="r_month">—</div><div class="s" id="r_mkwh"></div></div>
     <div class="result"><div class="l">Per year</div><div class="v" id="r_year">—</div><div class="s" id="r_ykwh"></div></div>
   </div>
@@ -68,7 +74,15 @@
   LC.el("preset").addEventListener("change", function () { if (this.value) LC.el("watts").value = this.value; });
   function calc() {
     var kw = (LC.num("watts") || 0) / 1000, hrs = LC.num("hrs") || 0, rate = LC.num("rate") || 0, weekly = LC.num("weekly") || 0;
-    var kwh = kw * hrs, perHour = kw * rate;
+    var peakKw = (LC.num("peak") || 0) / 1000, warmH = (LC.num("warmmin") || 0) / 60;
+
+    // Heating draws near peak until the bed is up to temperature, then the
+    // heaters duty-cycle down to the steady average. Modelling the two phases
+    // separately matters on short prints, where warm-up can be most of the energy.
+    var warmClamped = Math.min(warmH, hrs);
+    var warmKwh = peakKw * warmClamped;
+    var steadyKwh = kw * Math.max(0, hrs - warmClamped);
+    var kwh = warmKwh + steadyKwh, perHour = kw * rate;
     var monthH = weekly * 52 / 12, yearH = weekly * 52;
     LC.out("r_print", LC.money(kwh * rate));
     LC.out("r_kwh", LC.fmt(kwh, 2) + " kWh for " + LC.hours(hrs));
@@ -78,6 +92,23 @@
     LC.out("r_mkwh", LC.fmt(kw * monthH, 1) + " kWh at " + LC.fmt(monthH, 0) + " h/month");
     LC.out("r_year", LC.money(kw * yearH * rate));
     LC.out("r_ykwh", LC.fmt(kw * yearH, 0) + " kWh at " + LC.fmt(yearH, 0) + " h/year");
+
+    var warmShare = kwh > 0 ? warmKwh / kwh * 100 : 0;
+    LC.out("r_warm", isFinite(warmShare) ? LC.fmt(warmShare, 0) + " %" : "—");
+    LC.setClass("warmbox", "result " + (warmShare > 25 ? "warn" : ""));
+    LC.out("r_warms", warmClamped <= 0 ? "no warm-up entered"
+      : LC.money(warmKwh * rate) + " of " + LC.money(kwh * rate) + " — " +
+        (warmShare > 25 ? "short print, so heating dominates" : "heating is a small part of a print this long"));
+
+    // A printer left powered but idle can cost more per year than printing does.
+    var idleKw = (LC.num("idle") || 0) / 1000, idleHpd = LC.num("idleh") || 0;
+    var idleYear = idleKw * idleHpd * 365 * rate;
+    LC.show("idlebox", idleHpd > 0);
+    LC.out("r_idle", LC.money(idleYear));
+    var printYear = kw * yearH * rate;
+    LC.out("r_idles", printYear > 0 && idleYear > 0
+      ? (idleYear > printYear ? "more than you spend printing" : LC.fmt(idleYear / printYear * 100, 0) + "% of your printing cost")
+      : LC.fmt(idleKw * idleHpd * 365, 0) + " kWh a year doing nothing");
   }
   LC.currencyPicker("cur");
   LC.bind("f", calc);

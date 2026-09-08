@@ -6,7 +6,7 @@
   "short": "Weigh the spool, subtract the tare, and see grams and meters left — and whether a print will make it.",
   "category": "filament",
   "order": 10,
-  "updated": "2026-09-07",
+  "updated": "2026-09-08",
   "related": ["filament-length-weight-calculator", "filament-cost-calculator", "print-time-estimator", "3d-print-pricing-calculator"],
   "faq": [
     {"q": "How do I know how much filament is left on a spool?", "a": "Weigh the whole spool and subtract the weight of the empty spool. What's left is filament. A full 1 kg spool on a 220 g reel weighs 1,220 g; if yours reads 640 g there's 420 g of filament left. Divide by the grams-per-meter figure for the material (about 3 g/m for 1.75 mm PLA) to get the length."},
@@ -58,6 +58,19 @@
     <div class="field"><label for="dia">Diameter</label><select id="dia"><option value="1.75" selected>1.75 mm</option><option value="2.85">2.85 mm</option></select></div>
     <div class="field"><label for="need">Print I want to run needs</label><div class="inwrap"><input type="number" id="need" value="" placeholder="optional" min="0" step="1" inputmode="decimal"><span class="unit">g</span></div><p class="hint">From the slicer.</p></div>
   </div>
+  <fieldset class="group">
+    <legend>Can't weigh it? Measure the roll instead</legend>
+    <p class="hint" style="margin:0 0 10px">Works in place, so you can use it on a spool sitting in an AMS or a dry box. Less precise than a scale, but it needs no tare weight.</p>
+    <div class="fields">
+      <div class="field"><label for="od">Outer diameter of the wound filament</label><div class="inwrap"><input type="number" id="od" value="" placeholder="optional" min="1" step="1" inputmode="decimal"><span class="unit">mm</span></div><p class="hint">Across the filament itself, not the flange.</p></div>
+      <div class="field"><label for="cd">Core (hub) diameter</label><div class="inwrap"><input type="number" id="cd" value="95" min="1" step="1" inputmode="decimal"><span class="unit">mm</span></div></div>
+      <div class="field"><label for="fd">Outer diameter when the spool was full</label><div class="inwrap"><input type="number" id="fd" value="200" min="1" step="1" inputmode="decimal"><span class="unit">mm</span></div><p class="hint">Measure a new spool once and reuse it for that brand.</p></div>
+      <div class="field"><label for="fullg">Filament on a full spool</label><div class="inwrap"><input type="number" id="fullg" value="1000" min="1" step="1" inputmode="decimal"><span class="unit">g</span></div></div>
+    </div>
+    <div class="results">
+      <div class="result" id="geobox"><div class="l">Estimated from geometry</div><div class="v" id="r_geo">—</div><div class="s" id="r_geos"></div></div>
+    </div>
+  </fieldset>
   <div class="results">
     <div class="result primary"><div class="l">Filament left</div><div class="v" id="r_g">—</div><div class="s" id="r_pct"></div></div>
     <div class="result"><div class="l">Length left</div><div class="v" id="r_m">—</div><div class="s" id="r_gpm"></div></div>
@@ -79,6 +92,27 @@
     LC.out("r_pct", LC.fmt(left / 10, 0) + "% of a 1 kg spool");
     LC.out("r_m", LC.fmt(left / gpm, 1) + " m");
     LC.out("r_gpm", LC.fmt(gpm, 2) + " g per meter for this material");
+    // Second method: the wound filament is an annulus, so what remains is the
+    // ratio of annulus areas. Winding density and spool width cancel out, which
+    // is what makes this usable without knowing a packing factor.
+    var od = LC.num("od"), cd = LC.num("cd"), fd = LC.num("fd"), fullg = LC.num("fullg");
+    if (isFinite(od) && od > 0 && cd > 0 && fd > cd && fullg > 0) {
+      var ri2 = cd * cd / 4, ro2 = od * od / 4, rf2 = fd * fd / 4;
+      var frac = (ro2 - ri2) / (rf2 - ri2);
+      frac = Math.max(0, Math.min(1.2, frac));
+      var geoG = frac * fullg;
+      LC.setClass("geobox", "result " + (od < cd ? "bad" : ""));
+      LC.out("r_geo", od < cd ? "check the numbers" : LC.fmt(geoG, 0) + " g");
+      var diff = isFinite(left) && left > 0 ? Math.abs(geoG - left) : NaN;
+      LC.out("r_geos", od < cd ? "outer diameter is smaller than the core"
+        : LC.fmt(frac * 100, 0) + "% of a full roll · " + LC.fmt(geoG / gpm, 1) + " m"
+          + (isFinite(diff) ? " · " + LC.fmt(diff, 0) + " g from the weighed figure" : ""));
+    } else {
+      LC.setClass("geobox", "result");
+      LC.out("r_geo", "—");
+      LC.out("r_geos", "enter the wound outer diameter to use this method");
+    }
+
     var has = isFinite(need) && need > 0;
     LC.show("fitbox", has);
     if (has) {
@@ -109,6 +143,14 @@
   <li>A print needing 380 g will make it with 35 g to spare — enough, but a mid-print runout would waste 380 g, so it's worth double-checking the tare on a reel you've weighed yourself.</li>
 </ul>
 </div>
+
+<h2>The second method: measure the roll</h2>
+<p>A scale is the better answer, but it means taking the spool off the printer. If it is loaded in an AMS or sitting in a dry box, there is a geometric alternative that works in place.</p>
+<p>Wound filament forms an annulus &mdash; a ring with the hub as its hole. Its cross-sectional area is proportional to the difference of the squared radii, and the length of filament in it is proportional to that area times the winding width. Compare the ring you have now against the ring on a full spool and everything awkward cancels:</p>
+<div class="formula">fraction remaining = (outer&sup2; &minus; core&sup2;) ÷ (full outer&sup2; &minus; core&sup2;)<br>grams remaining = fraction × grams on a full spool</div>
+<p>The winding width cancels because it is the same ring. More usefully, so does the <em>packing factor</em> &mdash; how tightly the filament is wound and how much air sits between the wraps. That figure is genuinely uncertain, somewhere around 0.6&ndash;0.75 for typical machine winding, and any method that needs it inherits that uncertainty. Taking a ratio against the full spool removes it entirely, as long as the winding is similar, which for the same brand and machine it is.</p>
+<p>What you need once, per brand: the outer diameter of a <strong>new</strong> spool. Measure it before you start printing and write it on the box alongside the tare weight. After that the method needs only a ruler across the roll.</p>
+<p>Expect it to land within perhaps 5&ndash;10% of the weighed figure. Uneven winding, a partly collapsed roll, or filament wound to a different tension will all move it. If both figures are on screen the page shows the gap between them, which is a decent check on your assumed full diameter.</p>
 
 <h2>Empty spool weights</h2>
 <p>These are typical values compiled from manufacturer statements and community measurements. Spools change — several brands moved from plastic to cardboard between 2022 and 2025, and even the same design varies by 10–20 g batch to batch. The only exact number is the one you get by weighing an empty one.</p>
