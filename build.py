@@ -36,6 +36,7 @@ SITE = {
     "url": "https://layercalc.com",
     "lang": "en",
     "locale": "en_US",
+    "launched": "2026-09-07",
 }
 
 # Revenue plumbing. Everything here is inert until an ID is filled in, so the
@@ -74,7 +75,7 @@ CATEGORIES = {
         "h1": "3D printer calibration calculators",
         "description": "E-steps, flow rate, shrinkage compensation, magic layer heights, volumetric flow, belt tension and a test tower G-code generator. Free, in your browser.",
         "intro": "Dial in a printer in the right order: extruder steps, then flow, then dimensional accuracy, then speed. Each tool tells you exactly which number to type into your firmware or slicer.",
-        "guide": "<h2>Calibrate in this order, or you will do it twice</h2>\n<p>Each of these steps assumes the one before it is already correct. Tuning flow before the extruder is delivering the right length of filament, for instance, just bakes the extruder error into a flow number that will be wrong again the moment you fix it. The order below is the one that converges.</p>\n<ol>\n<li><strong>Extruder steps</strong> &mdash; e-steps on Marlin, rotation_distance on Klipper. Done once per extruder, not per material. Confirms the printer pushes 100&nbsp;mm when you ask for 100&nbsp;mm.</li>\n<li><strong>Flow rate</strong> &mdash; the extrusion multiplier, tuned per material. Corrects for how the plastic actually spreads once it leaves the nozzle: filament diameter tolerance, melt temperature, and the slicer's assumptions.</li>\n<li><strong>Temperature and retraction</strong> &mdash; a test tower per filament. Do this after flow, or over-extrusion will look exactly like printing too hot.</li>\n<li><strong>Dimensional accuracy</strong> &mdash; shrinkage compensation and hole offsets, per material. Only meaningful once the right amount of plastic is coming out.</li>\n<li><strong>Speed</strong> &mdash; find the hotend's volumetric ceiling last, since it determines which of your speed settings are doing anything at all.</li>\n</ol>\n<h3>Mechanical checks sit outside that sequence</h3>\n<p>Belt tension and layer-height selection are not part of the extrusion chain, but they set a ceiling on what any amount of tuning can achieve. Loose belts produce ringing that looks like an acceleration problem; a layer height that lands between full motor steps can show faint banding on glossy walls that no flow adjustment will remove. Both are worth checking before you spend an evening chasing extrusion settings.</p>\n<h3>How much of this does a modern printer need?</h3>\n<p>Less than it used to. Bambu, Prusa and most Klipper machines ship with the extruder already calibrated and the mechanics square, so flow and temperature per filament is often the whole job. E-steps matter most on budget machines and on anything you have modified &mdash; a new extruder, motor or mainboard puts you back at step one.</p>",
+        "guide": "<h2>An order that works</h2>\n<p>There is no single agreed sequence &mdash; OrcaSlicer's own guide runs temperature before flow, and the reasoning cuts both ways. What is not in dispute is that each step assumes the one before it is already correct. Tuning flow before the extruder is delivering the right length of filament, for instance, just bakes the extruder error into a flow number that will be wrong again the moment you fix it. The order below is the one that converges.</p>\n<ol>\n<li><strong>Extruder steps</strong> &mdash; e-steps on Marlin, rotation_distance on Klipper. Done once per extruder, not per material. Confirms the printer pushes 100&nbsp;mm when you ask for 100&nbsp;mm.</li>\n<li><strong>Flow rate</strong> &mdash; the extrusion multiplier, tuned per material. Corrects for how the plastic actually spreads once it leaves the nozzle: filament diameter tolerance, melt temperature, and the slicer's assumptions.</li>\n<li><strong>Temperature and retraction</strong> &mdash; a test tower per filament. Do this after flow, or over-extrusion will look exactly like printing too hot.</li>\n<li><strong>Dimensional accuracy</strong> &mdash; shrinkage compensation and hole offsets, per material. Only meaningful once the right amount of plastic is coming out.</li>\n<li><strong>Speed</strong> &mdash; find the hotend's volumetric ceiling last, since it determines which of your speed settings are doing anything at all.</li>\n</ol>\n<h3>Mechanical checks sit outside that sequence</h3>\n<p>Belt tension and layer-height selection are not part of the extrusion chain, but they set a ceiling on what any amount of tuning can achieve. Loose belts produce ringing that looks like an acceleration problem; a layer height that lands between full motor steps can show faint banding on glossy walls that no flow adjustment will remove. Both are worth checking before you spend an evening chasing extrusion settings.</p>\n<h3>How much of this does a modern printer need?</h3>\n<p>Less than it used to. Bambu, Prusa and most Klipper machines ship with the extruder already calibrated and the mechanics square, so flow and temperature per filament is often the whole job. E-steps matter most on budget machines and on anything you have modified &mdash; a new extruder, motor or mainboard puts you back at step one.</p>",
     },
     "filament": {
         "slug": "filament-calculators",
@@ -297,7 +298,10 @@ def tool_jsonld(tool: dict, canonical: str, cat: dict) -> dict:
             "@type": "WebPage",
             "name": tool["title"],
             "url": canonical,
+            "datePublished": tool.get("published", SITE["launched"]),
             "dateModified": tool["updated"],
+            "author": {"@type": "Organization", "name": SITE["name"], "url": SITE["url"] + "/about/"},
+            "publisher": {"@type": "Organization", "name": SITE["name"], "url": SITE["url"]},
             "isPartOf": {"@type": "WebSite", "name": SITE["name"], "url": SITE["url"]},
         },
         {
@@ -412,9 +416,10 @@ def build_category(key: str, tools: list[dict], base: str, hub: str) -> str:
     mine = [t for t in tools if t["category"] == key]
     parts = [f'<nav class="breadcrumb" aria-label="Breadcrumb"><a href="/">Home</a> &rsaquo; <span>{esc(cat["title"])}</span></nav>',
              '<section class="hero">', f'  <h1>{esc(cat["h1"])}</h1>', f'  <p>{esc(cat["intro"])}</p>', '</section>',
+             '<h2>Choose a calculator</h2>',
              '<div class="cards">' + "".join(card(t) for t in mine) + "</div>", ad_unit("hub")]
     parts.append('<section class="home-faq">')
-    parts.append(f'<h2>Every {cat["nav"].lower()} calculator</h2>')
+    parts.append('<h2>What each one does</h2>')
     for t in mine:
         parts.append(f'<h3><a href="/{t["slug"]}/">{esc(t["title"])}</a></h3><p>{t["lede"]}</p>')
     parts.append(cat["guide"])
@@ -447,7 +452,12 @@ def build_page(page: dict, tools: list[dict], base: str, tpl: str) -> str:
     content = render(tpl, {"title": esc(page["title"]), "body": body})
     path = f'/{page["slug"]}/'
     jsonld = {"@context": "https://schema.org", "@type": "WebPage", "name": page["title"], "url": SITE["url"] + path,
-              "description": page["description"], "isPartOf": {"@type": "WebSite", "name": SITE["name"], "url": SITE["url"]}}
+              "description": page["description"],
+              "datePublished": page.get("published", SITE["launched"]),
+              "dateModified": page.get("updated", SITE["launched"]),
+              "author": {"@type": "Organization", "name": SITE["name"], "url": SITE["url"] + "/about/"},
+              "publisher": {"@type": "Organization", "name": SITE["name"], "url": SITE["url"]},
+              "isPartOf": {"@type": "WebSite", "name": SITE["name"], "url": SITE["url"]}}
     nav_current = path if page["slug"] == "filament-settings-reference" else ""
     return page_shell(base, content=content, title=page["title"], page_title=f'{page["title"]} – {SITE["name"]}',
                       description=page["description"], canonical_path=path, jsonld=jsonld, tools=tools,
@@ -478,6 +488,7 @@ def not_found(tools: list[dict], base: str, hub: str) -> str:
     content = render(hub, {"content":
         '<section class="hero"><h1>That page doesn\'t exist</h1><p>The address may have a typo, or the tool moved. '
         'Everything on the site is listed below.</p></section>'
+        '<h2>Every calculator</h2>'
         '<div class="cards">' + "".join(card(t) for t in tools) + "</div>"})
     return page_shell(base, content=content, title="Page not found", page_title=f'Page not found – {SITE["name"]}',
                       description="The page you asked for could not be found. Every LayerCalc calculator is listed here.",
@@ -528,12 +539,18 @@ def main() -> None:
                 shutil.copy(f, DIST / f.name)
 
     today = date.today().isoformat()
-    urls = [(SITE["url"] + "/", today)]
+    # lastmod has to mean "this page changed", not "the site was rebuilt". A date
+    # that moves on every deploy teaches crawlers to ignore the field, so hubs
+    # inherit the newest date of the content they actually list.
+    all_dates = [t["updated"] for t in tools] + [p.get("updated", today) for p in pages]
+    newest = max(all_dates) if all_dates else today
+    urls = [(SITE["url"] + "/", newest)]
 
     write(DIST / "index.html", build_home(tools, base, hub))
     for key, cat in CATEGORIES.items():
         write(DIST / cat["slug"] / "index.html", build_category(key, tools, base, hub))
-        urls.append((f'{SITE["url"]}/{cat["slug"]}/', today))
+        cat_dates = [t["updated"] for t in tools if t["category"] == key]
+        urls.append((f'{SITE["url"]}/{cat["slug"]}/', max(cat_dates) if cat_dates else newest))
     for tool in tools:
         write(DIST / tool["slug"] / "index.html", build_tool(tool, tools, base, tool_tpl))
         urls.append((f'{SITE["url"]}/{tool["slug"]}/', tool["updated"]))

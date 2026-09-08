@@ -20,6 +20,7 @@ domain. Push to `main` and GitHub Actions builds and deploys it.
 | **Ads / analytics** | when you switch them on | `MONETIZATION` block at the top of `build.py` — see `docs/ADS.md` |
 
 Setup walkthrough (repo, domain, DNS, search consoles): **`docs/DEPLOY.md`**.
+What's done for SEO and what's deliberately skipped: **`docs/SEO.md`**.
 
 ---
 
