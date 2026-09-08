@@ -1,30 +1,30 @@
 {
   "title": "Layer Height Calculator (Magic Numbers)",
-  "page_title": "Magic Layer Height Calculator – Does It Actually Matter?",
-  "description": "Layer heights that land on full Z motor steps, the repeat period for heights that don't, and an honest verdict on whether it matters for your printer.",
-  "lede": "Work out which layer heights land on whole Z motor steps for your machine — and, more usefully, whether that makes any difference on your hardware. On most printers sold since about 2020 it does not, and this page says so rather than selling you the idea.",
-  "short": "Full-step layer heights for your Z axis, the banding period for heights that aren't, and whether it matters.",
+  "page_title": "Layer Height Calculator – Surface, Time & Magic Numbers",
+  "description": "Compare layer heights on print time, stair-stepping, flow limits and feature fit, plus full-step magic numbers and whether they matter on your printer.",
+  "lede": "Pick a layer height for reasons that actually change the print: how long it takes, how visible the stepping is on your slopes, whether your hotend can keep up, and whether critical heights land on a layer boundary. Magic numbers are in here too — along with an honest verdict on whether they matter for your hardware.",
+  "short": "Compare heights on time, stair-stepping, flow limit and feature fit — plus magic numbers, honestly weighted.",
   "category": "calibration",
   "order": 40,
   "updated": "2026-09-08",
   "related": ["max-volumetric-speed-calculator", "print-time-estimator", "flow-rate-calculator", "e-steps-calculator"],
   "faq": [
-    {"q": "Do magic layer heights actually improve print quality?", "a": "On most modern printers, no measurable amount. Prusa's own forum describes the concept as 'largely for early 3D printers with old design Stepper Drivers' and says it is 'not a big issue with Prusa Printers'. The underlying mechanism is real but small: current TMC drivers interpolate to 256 microsteps, and a loaded lead screw holds position mechanically. It matters most on older A4988 or DRV8825 drivers without interpolation."},
-    {"q": "What is a magic layer height?", "a": "A layer height that is an exact multiple of the distance one full motor step moves the Z axis. On an 8 mm lead screw with a 1.8° motor a full step is 0.04 mm, so 0.12, 0.16, 0.20 and 0.24 are multiples and 0.15 or 0.25 are not. Heights that aren't multiples make consecutive layers land on different points in the motor's step cycle."},
-    {"q": "What's the formula for a full step in mm?", "a": "Full step = travel per revolution ÷ (motor full steps per revolution × gear reduction). For a T8x8 lead screw and a 1.8° motor that's 8 ÷ 200 = 0.04 mm. A T8x2 screw gives 0.01 mm, and a 0.9° motor on an 8 mm lead gives 0.02 mm."},
-    {"q": "Doesn't bed mesh compensation cancel this out?", "a": "Where it is active, largely yes. Mesh compensation continuously adjusts Z in microsteps as the head moves across the bed, so layers are not sitting at a fixed Z at all. Most firmware fades this out over the first few millimetres, so the argument only fully applies below the fade height — but within that region the idea of a layer 'landing on a full step' has no meaning."},
-    {"q": "Doesn't homing land on an arbitrary microstep anyway?", "a": "It can, and that is often raised as a refutation. It isn't quite one: what full-step layer heights give you is consistent spacing, so every layer sits at the same point in the step cycle whatever offset homing established. The starting phase doesn't matter; the repeatability does. That said, the effect being made consistent is itself very small on modern hardware."},
-    {"q": "Why does this calculator show a repeat period?", "a": "Because it's the useful part. If your layer height is 3.75 full steps, the pattern repeats every 4 layers, so any banding it causes has a 4-layer period you could actually look for on a print. Knowing the period tells you whether a stripe pattern you can see is plausibly caused by this or by something else entirely, which a list of multiples cannot."}
+    {"q": "What layer height should I use?", "a": "For a 0.4 mm nozzle, 0.2 mm is the sensible default and 0.12–0.28 mm the useful range. Go finer only where you can see the benefit — curved and shallow-sloped surfaces — because time rises steeply and layer adhesion gets slightly worse. Go coarser for speed and strength on functional parts. The comparison table on this page shows the trade for your specific printer rather than in the abstract."},
+    {"q": "How do I work out how visible the layer stepping will be?", "a": "It depends on the slope angle, not just the layer height. On a surface at angle θ from horizontal, the deviation from the true surface (the cusp height) is layer height × cos(θ), and the horizontal width of each step is layer height ÷ tan(θ). A 0.2 mm layer on a 45° slope steps 0.2 mm horizontally; on a 15° slope the same layer steps 0.75 mm, which is why shallow domes look terraced while steep walls look fine."},
+    {"q": "Does halving the layer height double the print time?", "a": "Roughly, but not exactly, and sometimes much less. Time is set by volumetric throughput, and if your hotend's flow limit was already capping speed at the coarser height, dropping finer lets you run faster per layer and the increase is smaller than 2×. If you were nowhere near the flow limit, it is close to 2×. The table accounts for this using your hotend's flow figure."},
+    {"q": "Why does my 5 mm tall feature come out the wrong height?", "a": "Because 5 ÷ 0.3 is 16.67 layers, so the printer makes either 16 layers (4.8 mm) or 17 (5.1 mm). Any height that doesn't divide evenly into a critical dimension lands short or long by up to half a layer. At 0.2 mm, 5 mm is exactly 25 layers and comes out right. The feature-fit section checks this for you."},
+    {"q": "Do magic layer heights actually improve print quality?", "a": "On most modern printers, no measurable amount. Prusa's own forum describes the concept as 'largely for early 3D printers with old design Stepper Drivers' and says it is 'not a big issue with Prusa Printers'. Current TMC drivers interpolate to 256 microsteps and a loaded lead screw holds position mechanically. It matters most on older A4988 or DRV8825 drivers without interpolation — and choosing one costs nothing anyway."},
+    {"q": "What is a magic layer height?", "a": "A layer height that is an exact multiple of the distance one full motor step moves the Z axis. On an 8 mm lead screw with a 1.8° motor a full step is 0.04 mm, so 0.12, 0.16, 0.20 and 0.24 are multiples and 0.15 or 0.25 are not. Heights that aren't multiples make consecutive layers land on different points in the motor's step cycle, which this page reports as a repeat period."}
   ]
 }
 <form id="f" class="calc-form" novalidate>
   <fieldset class="group">
-    <legend>Your Z axis</legend>
+    <legend>Your printer</legend>
     <div class="fields">
       <div class="field">
-        <label for="preset">Preset</label>
+        <label for="preset">Z axis</label>
         <select id="preset">
-          <option value="8,200,16,1" selected>8 mm lead screw, 1.8° motor — Ender 3, Prusa MK3/MK4, Bambu, most printers</option>
+          <option value="8,200,16,1" selected>8 mm lead screw, 1.8° motor — Ender 3, Prusa, Bambu, most printers</option>
           <option value="4,200,16,1">T8x4 lead screw, 1.8° motor</option>
           <option value="2,200,16,1">T8x2 lead screw, 1.8° motor</option>
           <option value="8,400,16,1">8 mm lead screw, 0.9° motor</option>
@@ -34,205 +34,300 @@
           <option value="custom">Custom</option>
         </select>
       </div>
-      <div class="field"><label for="lead">Travel per motor revolution</label><div class="inwrap"><input type="number" id="lead" value="8" min="0.01" step="any" inputmode="decimal"><span class="unit">mm/rev</span></div><p class="hint">Lead screw lead (not pitch), or belt pitch × pulley teeth.</p></div>
-      <div class="field"><label for="steps">Motor full steps per revolution</label><select id="steps"><option value="200" selected>200 (1.8° motor)</option><option value="400">400 (0.9° motor)</option></select></div>
-      <div class="field"><label for="ratio">Gear reduction</label><div class="inwrap"><input type="number" id="ratio" value="1" min="0.01" step="any" inputmode="decimal"><span class="unit">: 1</span></div><p class="hint">1 for direct drive. Voron 2.4 is 5.</p></div>
+      <div class="field"><label for="lead">Travel per motor revolution</label><div class="inwrap"><input type="number" id="lead" value="8" min="0.01" step="any" inputmode="decimal"><span class="unit">mm/rev</span></div></div>
+      <div class="field"><label for="steps">Motor full steps/rev</label><select id="steps"><option value="200" selected>200 (1.8°)</option><option value="400">400 (0.9°)</option></select></div>
+      <div class="field"><label for="ratio">Gear reduction</label><div class="inwrap"><input type="number" id="ratio" value="1" min="0.01" step="any" inputmode="decimal"><span class="unit">: 1</span></div></div>
       <div class="field"><label for="micro">Microstepping</label><select id="micro"><option value="16" selected>16</option><option value="32">32</option><option value="64">64</option><option value="128">128</option><option value="256">256</option><option value="8">8</option></select></div>
-      <div class="field"><label for="nozzle">Nozzle diameter</label><select id="nozzle"><option value="0.2">0.2 mm</option><option value="0.25">0.25 mm</option><option value="0.3">0.3 mm</option><option value="0.4" selected>0.4 mm</option><option value="0.5">0.5 mm</option><option value="0.6">0.6 mm</option><option value="0.8">0.8 mm</option><option value="1.0">1.0 mm</option></select></div>
+      <div class="field"><label for="nozzle">Nozzle</label><select id="nozzle"><option value="0.2">0.2 mm</option><option value="0.25">0.25 mm</option><option value="0.3">0.3 mm</option><option value="0.4" selected>0.4 mm</option><option value="0.5">0.5 mm</option><option value="0.6">0.6 mm</option><option value="0.8">0.8 mm</option><option value="1.0">1.0 mm</option></select></div>
+      <div class="field"><label for="lw">Line width</label><div class="inwrap"><input type="number" id="lw" value="0.45" min="0.1" step="0.01" inputmode="decimal"><span class="unit">mm</span></div></div>
+      <div class="field"><label for="speed">Your usual print speed</label><div class="inwrap"><input type="number" id="speed" value="150" min="5" step="5" inputmode="decimal"><span class="unit">mm/s</span></div><p class="hint">Used to work out whether flow is the limit.</p></div>
+      <div class="field">
+        <label for="flowpreset">Hotend flow limit</label>
+        <select id="flowpreset">
+          <option value="10">Stock Ender 3 / MK8 / PTFE V6 (≈10)</option>
+          <option value="12">All-metal V6, Sprite (≈12)</option>
+          <option value="15" selected>Prusa MK3S, Revo Six (≈15)</option>
+          <option value="20">Prusa MK4 Nextruder (≈20)</option>
+          <option value="21">Bambu A1 / P1 / X1 (≈21)</option>
+          <option value="25">Volcano, Dragon HF, K1 (≈25)</option>
+          <option value="40">Revo HF, Rapido HF (≈40)</option>
+          <option value="custom">Custom</option>
+        </select>
+      </div>
+      <div class="field"><label for="flow">Max volumetric flow</label><div class="inwrap"><input type="number" id="flow" value="15" min="0.1" step="0.5" inputmode="decimal"><span class="unit">mm³/s</span></div></div>
     </div>
   </fieldset>
 
   <fieldset class="group">
-    <legend>Does it matter on your printer?</legend>
+    <legend>Compare layer heights</legend>
+    <div class="fields">
+      <div class="field"><label for="check">Layer height you're considering</label><div class="inwrap"><input type="number" id="check" value="0.2" min="0.01" step="0.01" inputmode="decimal"><span class="unit">mm</span></div><p class="hint">The table is relative to this one.</p></div>
+      <div class="field"><label for="angle">Shallowest slope in the model</label><div class="inwrap"><input type="number" id="angle" value="45" min="1" max="90" step="1" inputmode="decimal"><span class="unit">°</span></div><p class="hint">0° = flat top, 90° = vertical wall. Shallower slopes show stepping worst.</p></div>
+    </div>
+    <div class="results">
+      <div class="result primary"><div class="l">At <span id="r_h">0.20</span> mm on a <span id="r_a">45</span>° slope</div><div class="v" id="r_cusp">—</div><div class="s" id="r_cusps"></div></div>
+      <div class="result"><div class="l">Max speed at this height</div><div class="v" id="r_max">—</div><div class="s" id="r_maxs"></div></div>
+      <div class="result"><div class="l">For a smoother surface</div><div class="v" id="r_need">—</div><div class="s" id="r_needs"></div></div>
+    </div>
+    <div class="table-wrap breakdown"><table>
+      <thead><tr><th>Layer height</th><th>Print time</th><th>Max speed</th><th>Step on slope</th><th>Full steps</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table></div>
+    <p class="note">Print time is relative to your selected height and assumes the same model. It accounts for the flow ceiling &mdash; if coarser layers were already flow-capped, going finer costs less time than you would expect. It ignores per-layer overhead (travel, layer changes, minimum layer time), which makes very fine layers slightly worse than shown.</p>
+  </fieldset>
+
+  <fieldset class="group">
+    <legend>Does a critical height land on a layer?</legend>
+    <div class="fields">
+      <div class="field"><label for="feat">Feature height that must be right</label><div class="inwrap"><input type="number" id="feat" value="5" min="0.01" step="any" inputmode="decimal"><span class="unit">mm</span></div><p class="hint">A boss, a shoulder, a slot, an overall height. Leave blank to skip.</p></div>
+    </div>
+    <div class="results">
+      <div class="result" id="fitbox"><div class="l">At your layer height</div><div class="v" id="r_fit">—</div><div class="s" id="r_fits"></div></div>
+      <div class="result"><div class="l">Heights that divide it exactly</div><div class="v" id="r_exact">—</div><div class="s">from the full-step list</div></div>
+    </div>
+  </fieldset>
+
+  <fieldset class="group">
+    <legend>Magic numbers — does it matter here?</legend>
     <div class="fields">
       <div class="field">
         <label for="driver">Stepper driver</label>
         <select id="driver">
           <option value="modern" selected>TMC2208 / 2209 / 2130 / 5160 with interpolation (most printers since ~2019)</option>
-          <option value="tmcnoint">TMC without interpolation (spreadCycle, interpolation off)</option>
-          <option value="legacy">A4988 / DRV8825 / older (pre-2018 budget printers)</option>
+          <option value="tmcnoint">TMC without interpolation</option>
+          <option value="legacy">A4988 / DRV8825 / older</option>
           <option value="unknown">Not sure</option>
         </select>
       </div>
       <div class="field">
         <label for="mesh">Bed mesh compensation</label>
         <select id="mesh">
-          <option value="fade" selected>On, fading out over the first few mm (typical)</option>
-          <option value="always">On for the whole print (no fade)</option>
+          <option value="fade" selected>On, fading out over the first few mm</option>
+          <option value="always">On for the whole print</option>
           <option value="off">Off / not used</option>
         </select>
       </div>
-      <div class="field"><label for="check">Layer height you're considering</label><div class="inwrap"><input type="number" id="check" value="0.15" min="0.01" step="0.01" inputmode="decimal"><span class="unit">mm</span></div></div>
     </div>
     <div class="results">
-      <div class="result primary" id="verdictbox"><div class="l">Verdict for your setup</div><div class="v" id="r_verdict">—</div><div class="s" id="r_verdicts"></div></div>
+      <div class="result primary" id="verdictbox"><div class="l">Verdict for your setup</div><div class="v" id="r_verdict">—</div></div>
       <div class="result"><div class="l">Full step moves Z by</div><div class="v" id="r_full">—</div><div class="s" id="r_micro"></div></div>
-      <div class="result"><div class="l">Your height in full steps</div><div class="v" id="r_steps">—</div><div class="s" id="r_stepss"></div></div>
       <div class="result"><div class="l">Pattern repeat period</div><div class="v" id="r_period">—</div><div class="s" id="r_periods"></div></div>
     </div>
     <div id="note" class="note"></div>
-  </fieldset>
-
-  <fieldset class="group">
-    <legend>Full-step heights for this Z axis</legend>
-    <div class="table-wrap breakdown"><table>
-      <thead><tr><th>Layer height</th><th>Full steps</th><th>Suitability for nozzle</th></tr></thead>
-      <tbody id="rows"></tbody>
-    </table></div>
-    <div id="fine" class="note" hidden></div>
   </fieldset>
   <div class="actions"><button type="button" class="btn-ghost" data-reset>Reset</button></div>
 </form>
 <script>
 (function () {
-  var preset = LC.el("preset");
-  preset.addEventListener("change", function () {
+  var RAD = Math.PI / 180;
+  LC.el("preset").addEventListener("change", function () {
     if (this.value === "custom") return;
     var p = this.value.split(",");
     LC.el("lead").value = p[0]; LC.el("steps").value = p[1]; LC.el("micro").value = p[2]; LC.el("ratio").value = p[3];
   });
+  LC.el("flowpreset").addEventListener("change", function () { if (this.value !== "custom") LC.el("flow").value = this.value; });
 
-  // Smallest q such that h/f is within tolerance of p/q. q is the number of layers
-  // before the step-phase pattern repeats; q === 1 means every layer is on a full step.
+  // Extruded bead cross-section: a rectangle with semicircular ends, as the
+  // Slic3r-derived slicers model it. Plain width x height overstates by ~5-10%.
+  function area(h, w) { return w * h - h * h * (1 - Math.PI / 4); }
+
+  // Smallest q where height/fullstep x q is a whole number: the number of layers
+  // before the step-phase pattern repeats. q === 1 means every layer is on a full step.
   function repeatPeriod(ratio, maxQ, tol) {
     for (var q = 1; q <= maxQ; q++) {
       var p = ratio * q;
       if (Math.abs(p - Math.round(p)) < tol * q) return q;
     }
-    return 0;   // no small repeat - effectively never realigns
+    return 0;
   }
 
   function calc() {
     var lead = LC.num("lead"), steps = LC.num("steps"), micro = LC.num("micro"),
-        ratio = LC.num("ratio") || 1, noz = parseFloat(LC.val("nozzle"));
-    var full = lead / (steps * ratio), ms = full / micro;
-    if (!isFinite(full) || full <= 0) { LC.out("r_full", "—"); return; }
+        ratio = LC.num("ratio") || 1, noz = parseFloat(LC.val("nozzle")),
+        lw = LC.num("lw"), speed = LC.num("speed"), flow = LC.num("flow");
+    var full = lead / (steps * ratio);
+    if (!isFinite(full) || full <= 0 || !(lw > 0)) { LC.out("r_full", "—"); return; }
 
-    LC.out("r_full", (full * 1000).toFixed(1) + " µm");
-    LC.out("r_micro", "= " + full.toFixed(4) + " mm · one microstep = " + (ms * 1000).toFixed(2) + " µm at 1/" + micro);
-
-    var h = LC.num("check"), inSteps = h / full;
-    LC.out("r_steps", isFinite(inSteps) ? inSteps.toFixed(3) : "—");
-    var onFull = isFinite(inSteps) && Math.abs(inSteps - Math.round(inSteps)) < 1e-6;
-    LC.out("r_stepss", !isFinite(inSteps) ? "" : onFull ? "exactly " + Math.round(inSteps) + " full steps"
-      : "lands " + ((inSteps - Math.floor(inSteps)) * micro).toFixed(1) + " microsteps past a full step");
-
-    var q = onFull ? 1 : repeatPeriod(inSteps, 64, 1e-4);
-    LC.out("r_period", !isFinite(inSteps) ? "—" : q === 1 ? "none" : q ? "every " + q + " layers" : "no short repeat");
-    LC.out("r_periods", !isFinite(inSteps) ? "" : q === 1 ? "every layer sits at the same point in the step cycle"
-      : q ? "layers cycle through " + q + " step positions, so any banding from this would have a " + q + "-layer period ("
-            + (q * h).toFixed(2) + " mm)"
-          : "the phase drifts without repeating, so no periodic banding from this cause");
-
-    var driver = LC.val("driver"), mesh = LC.val("mesh");
-    var verdict, cls, detail;
-    if (onFull) {
-      verdict = "No downside"; cls = "ok";
-      detail = "This height is already on full steps, so there is nothing to gain by changing it. That is the useful thing about magic numbers: picking one costs nothing.";
-    } else if (driver === "legacy") {
-      verdict = "Worth choosing a full-step height"; cls = "warn";
-      detail = "Older A4988 and DRV8825 drivers do not interpolate, so microstep positions are held less precisely. This is the hardware the magic-number idea was originally about, and a " + q + "-layer pattern is the thing to look for.";
-    } else if (driver === "tmcnoint") {
-      verdict = "Marginal"; cls = "warn";
-      detail = "TMC drivers with interpolation disabled sit between the two cases. The effect is smaller than on legacy drivers and probably not visible, but a full-step height still costs nothing.";
-    } else if (driver === "unknown") {
-      verdict = "Probably irrelevant"; cls = "";
-      detail = "Almost any printer sold since around 2019 uses TMC drivers with interpolation, in which case this does not matter. If yours is older than that, or a budget board from before then, treat it as the legacy case.";
-    } else {
-      verdict = "Doesn't matter"; cls = "ok";
-      detail = "Your driver interpolates to 256 microsteps, which smooths motion between full steps. Prusa's own guidance describes this concept as being for early printers with old stepper drivers and 'not a big issue' on modern ones. Choose your layer height for surface finish and print time instead.";
-    }
-    if (!onFull && mesh === "always") {
-      detail += " On top of that, mesh compensation is active for your whole print, which continuously adjusts Z in microsteps as the head moves — so layers are not sitting at a fixed Z anyway and the question is largely moot.";
-    } else if (!onFull && mesh === "fade") {
-      detail += " Note that below your mesh fade height Z is being continuously adjusted in microsteps by bed compensation, so this cannot apply there regardless.";
-    }
-    LC.out("r_verdict", verdict);
-    LC.setClass("verdictbox", "result primary " + cls);
-    LC.out("r_verdicts", "");
-    LC.html("note", detail);
-
+    var h = LC.num("check"), ang = Math.min(90, Math.max(0.1, LC.num("angle") || 45));
     var lo = noz * 0.25, hi = noz * 0.75, max = noz * 0.8;
-    var rows = [], n = 1, count = 0;
-    while (n * full <= max + 1e-9 && count < 60) {
+
+    /* ---------- surface quality at the chosen height and angle ---------- */
+    var cusp = h * Math.cos(ang * RAD);
+    var stepW = ang >= 89.999 ? 0 : h / Math.tan(ang * RAD);
+    LC.out("r_h", isFinite(h) ? h.toFixed(2) : "—");
+    LC.out("r_a", LC.fmt(ang, 0));
+    LC.out("r_cusp", isFinite(cusp) ? (cusp * 1000).toFixed(0) + " µm deviation" : "—");
+    LC.out("r_cusps", !isFinite(stepW) ? "" :
+      "each step is " + (stepW >= 0.5 ? stepW.toFixed(2) + " mm" : (stepW * 1000).toFixed(0) + " µm") + " wide · " +
+      (cusp < 0.03 ? "essentially invisible" : cusp < 0.08 ? "visible up close" : cusp < 0.15 ? "clearly visible" : "prominent terracing"));
+
+    var ar = area(h, lw), vmax = flow / ar;
+    LC.out("r_max", isFinite(vmax) ? LC.fmt(Math.min(vmax, speed), 0) + " mm/s" : "—");
+    LC.out("r_maxs", !isFinite(vmax) ? "" : vmax < speed
+      ? "flow-limited — your " + LC.fmt(speed, 0) + " mm/s setting is capped to " + LC.fmt(vmax, 0)
+      : "not flow-limited — the hotend allows " + LC.fmt(vmax, 0) + " mm/s");
+
+    // inverse: what height gets the deviation under a threshold on this slope
+    var target = 0.05, needH = target / Math.max(0.0001, Math.cos(ang * RAD));
+    if (needH >= h) {
+      LC.out("r_need", "already there");
+      LC.out("r_needs", "deviation is under 50 µm at this height and angle");
+    } else {
+      var needMagic = Math.floor(needH / full) * full;
+      LC.out("r_need", needH >= 0.01 ? needH.toFixed(3) + " mm or finer" : "not achievable");
+      LC.out("r_needs", needH >= 0.01
+        ? "for under 50 µm deviation" + (needMagic >= lo ? " · nearest full-step height is " + needMagic.toFixed(3).replace(/0+$/, "").replace(/\.$/, "") + " mm" : "")
+        : "a 50 µm deviation needs an impractically fine layer on this slope");
+    }
+
+    /* ---------- comparison table ---------- */
+    var cand = {}, n = 1;
+    while (n * full <= max + 1e-9 && n < 200) {
       var v = n * full;
-      if (v >= 0.04 - 1e-9) {
-        var c = v < lo ? "" : v <= hi ? "ok" : "warn";
-        var label = v < lo ? "very fine — slow, flow may be inconsistent" : v <= hi ? "in the useful range" : "coarse — weaker layer bonding";
-        var mark = Math.abs(v - h) < 1e-9 ? " ◀" : "";
-        rows.push('<tr><td><strong>' + v.toFixed(3).replace(/0+$/, "").replace(/\.$/, "") + ' mm</strong>' + mark + '</td><td>' + n + '</td><td class="' + c + '">' + label + '</td></tr>');
-        count++;
-      }
+      if (v >= 0.04 - 1e-9 && v >= lo * 0.6) cand[v.toFixed(4)] = true;
       n++;
     }
-    var veryFine = full < 0.011;
-    LC.show("fine", veryFine);
-    if (veryFine) {
-      LC.html("fine", "A full step moves your Z by only " + (full * 1000).toFixed(1) + " µm, so essentially every layer height you would realistically choose is either on a full step or within a fraction of one. Magic numbers are not a constraint on this machine — pick by nozzle and surface finish.");
+    [0.1, 0.12, 0.15, 0.16, 0.2, 0.24, 0.25, 0.28, 0.3, 0.32, 0.4, 0.5].forEach(function (v) {
+      if (v >= lo * 0.6 && v <= max + 1e-9) cand[v.toFixed(4)] = true;
+    });
+    if (isFinite(h) && h > 0) cand[h.toFixed(4)] = true;
+
+    var list = Object.keys(cand).map(parseFloat).sort(function (a, b) { return a - b; });
+    var baseAr = area(h, lw), baseV = Math.min(speed, flow / baseAr), baseRate = baseAr * baseV;
+    var rows = list.map(function (v) {
+      var a = area(v, lw), vm = flow / a, veff = Math.min(speed, vm), rate = a * veff;
+      var rel = baseRate / rate;                       // time scales inversely with throughput
+      var c = v * Math.cos(ang * RAD);
+      var inSteps = v / full, magic = Math.abs(inSteps - Math.round(inSteps)) < 1e-6;
+      var cls = v < lo ? "" : v <= hi ? "ok" : "warn";
+      var sel = Math.abs(v - h) < 1e-9;
+      return "<tr" + (sel ? ' style="font-weight:600"' : "") + "><td>" + v.toFixed(3).replace(/0+$/, "").replace(/\.$/, "") + " mm" + (sel ? " ◀" : "") + "</td>" +
+        "<td>" + (Math.abs(rel - 1) < 0.005 ? "—" : (rel > 1 ? "+" : "") + ((rel - 1) * 100).toFixed(0) + "%") + "</td>" +
+        "<td>" + LC.fmt(veff, 0) + " mm/s" + (vm < speed ? " *" : "") + "</td>" +
+        '<td class="' + cls + '">' + (c * 1000).toFixed(0) + " µm</td>" +
+        "<td>" + (magic ? Math.round(inSteps) : inSteps.toFixed(2) + " ✗") + "</td></tr>";
+    });
+    LC.html("rows", rows.join("") + '<tr><td colspan="5" style="color:var(--muted);font-size:.85rem">* capped by the hotend\'s flow limit, not your speed setting. ✗ = not a whole number of motor steps.</td></tr>');
+
+    /* ---------- feature height fit ---------- */
+    var feat = LC.num("feat");
+    if (isFinite(feat) && feat > 0 && isFinite(h) && h > 0) {
+      var layers = feat / h, whole = Math.round(layers), got = whole * h, err = got - feat;
+      var exact = Math.abs(err) < 0.0005;
+      LC.setClass("fitbox", "result " + (exact ? "ok" : Math.abs(err) > h * 0.25 ? "bad" : "warn"));
+      LC.out("r_fit", exact ? "Exact" : (err > 0 ? "+" : "") + (err * 1000).toFixed(0) + " µm out");
+      LC.out("r_fits", exact ? LC.fmt(whole, 0) + " layers exactly"
+        : LC.fmt(layers, 2) + " layers — the printer makes " + LC.fmt(whole, 0) + ", giving " + got.toFixed(3) + " mm");
+      var fits = list.filter(function (v) {
+        var k = feat / v; return Math.abs(k - Math.round(k)) * v < 0.0005 && v >= lo && v <= hi;
+      }).map(function (v) { return v.toFixed(3).replace(/0+$/, "").replace(/\.$/, ""); });
+      LC.out("r_exact", fits.length ? fits.slice(0, 5).join(", ") + " mm" : "none in range");
+    } else {
+      LC.setClass("fitbox", "result");
+      LC.out("r_fit", "—"); LC.out("r_fits", "enter a height to check"); LC.out("r_exact", "—");
     }
-    LC.html("rows", rows.join("") || '<tr><td colspan="3">No full-step multiples fall in the usable range — check the inputs.</td></tr>');
+
+    /* ---------- magic numbers verdict ---------- */
+    LC.out("r_full", (full * 1000).toFixed(1) + " µm");
+    LC.out("r_micro", "one microstep = " + (full / micro * 1000).toFixed(2) + " µm at 1/" + micro);
+    var inSteps2 = h / full, onFull = Math.abs(inSteps2 - Math.round(inSteps2)) < 1e-6;
+    var q = onFull ? 1 : repeatPeriod(inSteps2, 64, 1e-4);
+    LC.out("r_period", !isFinite(inSteps2) ? "—" : q === 1 ? "none" : q ? "every " + q + " layers" : "no short repeat");
+    LC.out("r_periods", !isFinite(inSteps2) ? "" : q === 1 ? "every layer sits at the same point in the step cycle"
+      : q ? "banding from this cause would repeat every " + (q * h).toFixed(2) + " mm" : "the phase drifts without repeating");
+
+    var driver = LC.val("driver"), mesh = LC.val("mesh"), verdict, cls2, detail;
+    if (onFull) {
+      verdict = "No downside"; cls2 = "ok";
+      detail = "This height is already on full steps, so there is nothing to gain by changing it. That is the useful thing about magic numbers: picking one costs nothing.";
+    } else if (driver === "legacy") {
+      verdict = "Worth choosing a full-step height"; cls2 = "warn";
+      detail = "Older A4988 and DRV8825 drivers do not interpolate, so microstep positions are held less precisely. This is the hardware the magic-number idea was formed around, and a " + q + "-layer pattern is what to look for.";
+    } else if (driver === "tmcnoint") {
+      verdict = "Marginal"; cls2 = "warn";
+      detail = "TMC drivers with interpolation off sit between the two cases. Smaller than on legacy drivers and probably not visible, but a full-step height still costs nothing.";
+    } else if (driver === "unknown") {
+      verdict = "Probably irrelevant"; cls2 = "";
+      detail = "Almost any printer sold since around 2019 uses TMC drivers with interpolation, in which case this does not matter. If yours predates that, treat it as the legacy case.";
+    } else {
+      verdict = "Doesn't matter"; cls2 = "ok";
+      detail = "Your driver interpolates to 256 microsteps, which smooths motion between full steps. Prusa's own guidance calls this concept one for early printers with old stepper drivers and 'not a big issue' on modern ones. Choose by the surface and time columns above instead.";
+    }
+    if (!onFull && mesh === "always") detail += " Mesh compensation is also active for your whole print, continuously adjusting Z in microsteps, so layers are not sitting at a fixed Z anyway.";
+    else if (!onFull && mesh === "fade") detail += " Below your mesh fade height Z is continuously adjusted by bed compensation, so this cannot apply there regardless.";
+    LC.out("r_verdict", verdict);
+    LC.setClass("verdictbox", "result primary " + cls2);
+    LC.html("note", detail);
   }
   LC.bind("f", calc);
 })();
 </script>
 <!--ARTICLE-->
-<h2>The honest summary</h2>
-<p>If your printer was made in roughly the last six years, this almost certainly does not affect your prints. Prusa's own forum puts it plainly: the concept "was largely for early 3D printers with old design Stepper Drivers and it's not a big issue with Prusa Printers." The same reasoning applies to Bambu, Creality's current range, and any machine running TMC2208 or TMC2209 drivers — which is nearly all of them.</p>
-<p>That said, choosing 0.16 mm over 0.15 mm costs you nothing at all. So the practical advice is: don't reorganise your profiles around this, don't expect a visible improvement, but if you are picking a number anyway, you may as well pick one that lands on a full step. This page exists to tell you which ones do and to be straight about the size of the effect.</p>
+<h2>Choosing a layer height on the things that actually change the print</h2>
+<p>Most layer height calculators list the multiples of your motor's full step and stop. That is one input, and on a modern printer it is close to the least important one. The four that genuinely change the result are above the fold:</p>
+<ul>
+  <li><strong>How long it takes</strong> &mdash; and whether your hotend's flow limit changes that trade.</li>
+  <li><strong>How visible the stepping is</strong> on the sloped and curved surfaces in <em>your</em> model.</li>
+  <li><strong>Whether critical heights land on a layer boundary.</strong></li>
+  <li><strong>Whether it is a full-step multiple</strong> &mdash; which usually doesn't matter, and the page says when it does.</li>
+</ul>
 
-<h2>The formula</h2>
-<div class="formula">full step (mm) = travel per revolution ÷ (motor steps per revolution × gear reduction)<br>full-step layer heights = full step × 1, 2, 3, …<br>repeat period = smallest q where (layer height ÷ full step) × q is a whole number</div>
+<h2>Stair-stepping: the number that decides how it looks</h2>
+<p>Layer height alone doesn't tell you whether a surface will look stepped. The slope does. On a surface at angle θ measured from horizontal:</p>
+<div class="formula">deviation from the true surface (cusp height) = layer height × cos(θ)<br>horizontal width of each step = layer height ÷ tan(θ)</div>
+<p>A vertical wall (θ = 90°) has zero deviation no matter how coarse the layers &mdash; which is why a plain box looks fine at 0.3 mm. A 45° slope at 0.2 mm deviates 141 µm and steps 0.2 mm across. A 15° slope at the same 0.2 mm still deviates 193 µm but each step is now <strong>0.75 mm wide</strong>, and that width is what makes shallow domes and gentle curves look terraced while steep surfaces look smooth.</p>
+<p>This is why "use 0.1 mm for detail" is bad advice in the abstract. If your model is mostly vertical walls, fine layers buy you nothing but time. If it has a shallow dome on top, they buy you a lot.</p>
 
 <div class="example">
 <h3>Worked example</h3>
-<p>Ender 3: 8 mm lead screw, 1.8° motor (200 steps), direct drive.</p>
+<p>A part with a 30° slope, printed at 0.2 mm on a 0.4 mm nozzle.</p>
 <ul>
-  <li>Full step: 8 ÷ 200 = <strong>0.04 mm</strong></li>
-  <li>On full steps: 0.04, 0.08, <strong>0.12, 0.16, 0.20, 0.24, 0.28</strong>, 0.32</li>
-  <li>Not: 0.10 (2.5 steps, repeats every 2 layers), 0.15 (3.75 steps, <strong>repeats every 4</strong>), 0.25 (6.25 steps, repeats every 4)</li>
+  <li>Deviation: 0.2 × cos(30°) = <strong>173 µm</strong> &mdash; clearly visible</li>
+  <li>Step width: 0.2 ÷ tan(30°) = <strong>0.35 mm</strong></li>
+  <li>To get deviation under 50 µm: 0.05 ÷ cos(30°) = <strong>0.058 mm or finer</strong></li>
 </ul>
-<p>That last column is the part other calculators don't give you. If you print at 0.15 mm and you can see faint banding, this tells you the pattern from this cause would repeat every 4 layers — 0.6 mm. If the banding you're looking at has a different period, it isn't this; look at your lead screw, Z wobble or extrusion instead.</p>
+<p>That is a big jump &mdash; roughly 3.5× the print time. The usual answer is not to print the whole part that fine but to use variable layer height, letting the slicer thin the layers only where the slope demands it. The figure above tells you what to set the minimum to.</p>
 </div>
 
-<h2>What the mechanism actually is</h2>
-<p>A stepper motor has 200 or 400 positions per turn where the rotor is held by the magnet poles. Between those, the driver interpolates by feeding the coils fractional currents. Microstep positions are held with less torque and less positional accuracy than full steps.</p>
-<p>Prusa's own description points at a more specific version of this: the Z axis is not always energised, and "if the axis is disabled during micro-step, [the] axis jumps to the closest full step and introduce[s] error." That is a real effect with a real magnitude — up to half a full step, or 20 µm on a 0.04 mm machine — but it happens when motors are de-energised, not continuously through a print.</p>
-<p>During printing the effect is subtler: if the layer height is a whole number of full steps, every layer sits at the same point in the motor's electrical cycle, so whatever small positioning error exists is <em>identical on every layer</em> and invisible. If it isn't, layers cycle through a few different positions and any error becomes periodic, which the eye picks up as banding. Consistency is the actual benefit, not accuracy.</p>
+<h2>Print time, and why it isn't simply 1/height</h2>
+<p>Time is set by volumetric throughput, not by layer count alone:</p>
+<div class="formula">throughput (mm³/s) = bead cross-section × speed<br>bead cross-section = line width × layer height &minus; layer height² × (1 &minus; π/4)</div>
+<p>If your hotend's flow limit was already capping speed at the coarser height, then dropping to a finer layer lets you run faster per layer, and the time penalty is smaller than the layer-count ratio suggests. If you were nowhere near the limit, it is close to proportional. The table applies your actual flow figure, and marks with an asterisk any row where the hotend, not your speed setting, is the constraint.</p>
+<p>The cross-section formula is the one the Slic3r-derived slicers use &mdash; a rectangle with semicircular ends. Plain width × height overstates throughput by 5&ndash;10% at typical settings, which is enough to matter when you are near the ceiling. The <a href="/max-volumetric-speed-calculator/">volumetric speed calculator</a> goes into this in more depth.</p>
+<p>One thing the table deliberately doesn't model: per-layer overhead. Travel moves, layer changes and minimum-layer-time cooling all scale with layer <em>count</em>, so very fine layers are somewhat worse in reality than the throughput maths alone suggests.</p>
 
-<h2>The arguments against, and how much they hold</h2>
-<h3>"Homing lands on an arbitrary microstep anyway"</h3>
-<p>True, and frequently offered as a knockout. It isn't quite. A full-step layer height gives consistent <em>spacing</em>, so every layer sits at the same phase in the step cycle regardless of what offset homing established. The starting point is irrelevant; the repeatability is the point. This objection is weaker than it sounds — but the thing being made consistent is very small to begin with.</p>
-<h3>"Bed mesh compensation moves Z in microsteps constantly"</h3>
-<p>This one holds. With mesh compensation active, Z is continuously adjusted as the toolhead moves across the bed, so a layer isn't at a single Z at all and "landing on a full step" stops being meaningful. Most firmware fades compensation out over the first few millimetres, so the objection fully applies below the fade height and stops applying above it — but within that region it's decisive.</p>
-<h3>"Modern drivers interpolate"</h3>
-<p>This one also holds, and it's the main reason the idea has aged out. TMC drivers interpolate to 256 microsteps regardless of the configured microstepping, which smooths the current waveform and makes intermediate positions far more stable than they were on an A4988. Combined with a loaded lead screw — which is held mechanically by friction and the weight of the gantry — the residual error is well below what shows on a printed surface.</p>
-<h3>"The error is too small to see"</h3>
-<p>Broadly true on modern hardware. Layer-height variation from Z wobble, an eccentric lead screw, inconsistent extrusion or a warped bed is typically much larger than anything microstepping contributes. If you have visible banding, those are the things to check first, and the repeat period above will help you rule this cause in or out.</p>
+<h2>Feature fit: why a 5 mm boss comes out 4.8 mm</h2>
+<p>A printer can only stop on a layer boundary. If a dimension that matters isn't a whole number of layers, it lands short or long by up to half a layer:</p>
+<div class="formula">layers = feature height ÷ layer height<br>printed height = round(layers) × layer height</div>
+<p>5 mm at 0.3 mm is 16.67 layers, so you get 16 (4.8 mm) or 17 (5.1 mm) &mdash; up to 200 µm out on a dimension you specified precisely. At 0.2 mm it is exactly 25 layers and comes out right. This bites hardest on parts that mate with hardware: bearing shoulders, standoffs, anything with a specified stack height.</p>
+<p>The tool checks your chosen height against a dimension you give it, and lists which heights in the usable range divide it exactly. Note that this is separate from <a href="/shrinkage-compensation-calculator/">shrinkage</a>, which shifts every dimension by a percentage; this is a quantisation error and no amount of scaling fixes it.</p>
 
-<h2>When it does still apply</h2>
-<ul>
-  <li><strong>Older budget printers</strong> with A4988 or DRV8825 drivers and no interpolation — the hardware the idea was formed around.</li>
-  <li><strong>Boards with interpolation deliberately disabled</strong>, which some people run for specific reasons.</li>
-  <li><strong>Any printer where Z is de-energised between moves</strong>, per Prusa's disabled-axis note.</li>
-</ul>
-<p>Conversely it is essentially irrelevant on a fine-lead Z (a T8x2 screw has a 0.01 mm full step, so almost any sensible layer height is within a fraction of a step), on belted Z with reduction, and on anything with mesh compensation active for the full print height.</p>
+<h2>Magic numbers, weighted honestly</h2>
+<p>A layer height that is an exact multiple of one full motor step means every layer sits at the same point in the motor's electrical cycle, so whatever small positioning error exists is identical on every layer and therefore invisible. If it isn't a multiple, layers cycle through a few positions and the error becomes periodic &mdash; which the tool reports as a repeat period, so you can check a banding pattern you can actually see against a predicted one.</p>
+<p>How much this matters depends on hardware, and on most current printers the answer is "not at all". Prusa's own forum describes the concept as <em>"largely for early 3D printers with old design Stepper Drivers"</em> and <em>"not a big issue with Prusa Printers"</em>. TMC drivers interpolate to 256 microsteps; a loaded lead screw is held mechanically; and where bed mesh compensation is active, Z is being adjusted continuously in microsteps anyway, so the idea of a layer "landing on a full step" stops meaning anything.</p>
+<p>It still applies on older A4988 and DRV8825 boards without interpolation, and Prusa notes a specific mechanism worth knowing: a <em>disabled</em> Z axis snaps to the nearest full step, which is an error of up to half a step. The verdict box takes your driver and mesh settings into account rather than giving everyone the same answer.</p>
+<p>And the practical note that survives all of it: choosing 0.16 over 0.15 costs nothing. Don't reorganise your profiles around this, but if you're picking a number anyway, you may as well pick one that lands on a step.</p>
 
-<h2>How this differs from other layer height calculators</h2>
-<p>Prusa publishes one as part of their RepRap calculator, and several other sites list the multiples. Those give you the same arithmetic this page does — full step size and its multiples — and stop there. What's added here:</p>
-<ul>
-  <li><strong>The repeat period</strong> for heights that aren't on full steps, so you can match a banding pattern you can actually see against a predicted period rather than guessing.</li>
-  <li><strong>A verdict conditioned on your hardware</strong> — driver type and mesh settings — instead of implying the answer is the same for every printer.</li>
-  <li><strong>An explicit statement of how small the effect is</strong>, including Prusa's own position that it isn't a big issue on modern machines.</li>
-</ul>
-<p>If all you want is the list of multiples, any of those calculators will do and Prusa's is as good as this one.</p>
-
-<h2>Choosing a layer height for reasons that matter more</h2>
-<p>Layer height trades detail against time roughly linearly: 0.12 mm takes about 1.7× as long as 0.20 mm. The nozzle sets the sensible bounds — below about 25% of nozzle diameter the melt is squeezed thin enough that flow gets erratic, and above about 75% the bead can't be pressed properly onto the layer below, so adhesion suffers. Within that range, larger layers bond better and smaller layers look better. Those effects are far larger than anything on this page. The <a href="/max-volumetric-speed-calculator/">volumetric speed calculator</a> shows how fast you can actually run each height before the hotend becomes the limit.</p>
+<h2>How this compares to other layer height calculators</h2>
+<p>Prusa publishes one inside their RepRap calculator, and several other sites list the multiples. Those take your lead screw and motor and return the arithmetic. What this page adds:</p>
+<div class="table-wrap"><table>
+<thead><tr><th></th><th>Typical layer height calculator</th><th>This page</th></tr></thead>
+<tbody>
+<tr><td>Full-step multiples</td><td>Yes</td><td>Yes</td></tr>
+<tr><td>Whether they matter on your hardware</td><td>No &mdash; implies they always do</td><td>Verdict from your driver and mesh settings</td></tr>
+<tr><td>Banding repeat period</td><td>No</td><td>Yes, so you can match a real pattern</td></tr>
+<tr><td>Stair-stepping on your slopes</td><td>No</td><td>Cusp height and step width at any angle</td></tr>
+<tr><td>Layer height needed for a target smoothness</td><td>No</td><td>Solved directly</td></tr>
+<tr><td>Print time trade</td><td>No</td><td>Relative time, flow-aware</td></tr>
+<tr><td>Hotend flow ceiling per height</td><td>No</td><td>Max speed per row, capped rows marked</td></tr>
+<tr><td>Critical feature fit</td><td>No</td><td>Quantisation error and heights that divide exactly</td></tr>
+</tbody></table></div>
+<p>If all you want is the list of multiples, any of them will do and Prusa's is as good as this one.</p>
 
 <h2>Sources</h2>
 <ul>
-  <li>Prusa community forum, <em>Optimal layer height for your Z axis calculator</em> — origin of the concept, the disabled-axis mechanism, and the statement that it is "not a big issue with Prusa Printers".</li>
-  <li>Prusa's RepRap calculator, which includes an optimal-layer-height tool.</li>
+  <li>Prusa community forum, <em>Optimal layer height for your Z axis</em> &mdash; the origin of the concept, the disabled-axis mechanism, and the position that it is not a big issue on modern printers.</li>
+  <li>Slic3r / PrusaSlicer extrusion geometry for the bead cross-section used in the throughput and flow columns.</li>
   <li>TMC driver documentation on 256-microstep interpolation.</li>
 </ul>
-<p>The geometry on this page — full step size, multiples, repeat period — is exact arithmetic and independent of any of the above. The judgements about whether it matters are exactly that: judgements, based on the sources listed, and stated so you can disagree with them.</p>
+<p>The geometry on this page &mdash; full step size, multiples, repeat period, cusp height, step width, feature quantisation &mdash; is exact arithmetic. The flow and time figures depend on the hotend limit you enter, which is a measurement you should take yourself. The judgements about what matters are judgements, sourced above so you can disagree with them.</p>

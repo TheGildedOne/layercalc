@@ -254,20 +254,75 @@ group("shrinkage-compensation-calculator", () => {
 
 group("layer-height-calculator", () => {
   const p = load("layer-height-calculator");
+
+  // --- geometry: 8 mm lead / 200 steps = 0.04 mm full step
   check("full step 0.04 mm", p.text("r_full"), "40.0 µm");
-  // 0.15 / 0.04 = 3.75 -> repeats every 4 layers
-  check("0.15 mm repeat period", p.text("r_period"), "every 4 layers");
-  check("0.15 in full steps", p.text("r_steps"), "3.750");
-  // a magic height has no repeat and no downside
+
+  // --- stair-stepping: cusp = h*cos(angle), step width = h/tan(angle)
+  // 0.2 mm at 45 degrees -> 0.1414 mm deviation, 0.2 mm step
+  check("cusp at 45 deg", p.text("r_cusp"), "141 µm deviation");
+  check("step width at 45 deg", p.text("r_cusps"), /each step is 200 µm wide/);
+  // the shallow-slope case the article cites: 15 deg gives a 0.75 mm step
+  p.set("angle", 15);
+  check("cusp at 15 deg", p.text("r_cusp"), "193 µm deviation");
+  check("shallow slope steps 0.75 mm", p.text("r_cusps"), /each step is 0\.75 mm wide/);
+  check("shallow slope reads as visible", p.text("r_cusps"), /prominent terracing/);
+  // vertical walls never step, whatever the layer height
+  p.set("angle", 90);
+  check("vertical wall has no deviation", p.text("r_cusp"), "0 µm deviation");
+  p.set("angle", 45);
+
+  // --- inverse solve: height needed for under 50 um deviation on this slope
+  check("height for 50 um at 45 deg", p.text("r_need"), /0\.071 mm or finer/);
+  // 0.071 rounds down to a 0.04 mm full-step height, which is below the usable
+  // range for a 0.4 nozzle - the tool must not recommend it
+  check("no impractical suggestion", p.text("r_needs"), "for under 50 µm deviation");
+  // on a steeper slope the answer is practical, and it names the full-step height
+  p.set("angle", 75);
+  check("steep slope suggestion", p.text("r_needs"), /nearest full-step height is 0\.16 mm/);
+  p.set("angle", 45);
+
+  // --- flow ceiling. area(0.2,0.45)=0.0814 -> 184 mm/s, above the 150 setting
+  check("not flow limited at 0.2", p.text("r_max"), "150 mm/s");
+  check("says so", p.text("r_maxs"), /not flow-limited/);
+  // coarser layers hit the ceiling: area(0.28,0.45)=0.1092 -> 137 mm/s
+  p.set("check", 0.28);
+  check("flow limited at 0.28", p.text("r_max"), "137 mm/s");
+  check("flags the cap", p.text("r_maxs"), /flow-limited/);
   p.set("check", 0.2);
+
+  // --- feature fit: 5 mm is exactly 25 layers at 0.2
+  check("5 mm fits 0.2 exactly", p.text("r_fit"), "Exact");
+  check("layer count given", p.text("r_fits"), /25 layers exactly/);
+  // at 0.3 it is 16.67 layers -> printer makes 17 -> 5.1 mm
+  p.set("check", 0.3);
+  check("5 mm at 0.3 overshoots", p.text("r_fit"), "+100 µm out");
+  check("shows the rounding", p.text("r_fits"), /16\.67 layers/);
+  check("suggests heights that divide exactly", p.text("r_exact"), /0\.2/);
+  p.set("check", 0.2);
+  // blank feature height must not break anything
+  p.set("feat", "");
+  check("blank feature height", p.text("r_fit"), "—");
+  p.set("feat", 5);
+
+  // --- magic numbers, correctly weighted
   check("0.20 mm is on full steps", p.text("r_period"), "none");
-  check("verdict for magic height", p.text("r_verdict"), "No downside");
-  // honest verdict on modern drivers
-  p.set("check", 0.15).set("driver", "modern");
+  check("verdict for a magic height", p.text("r_verdict"), "No downside");
+  p.set("check", 0.15);
+  check("0.15 mm repeat period", p.text("r_period"), "every 4 layers");
+  check("repeat distance given", p.text("r_periods"), /every 0\.60 mm/);
   check("modern driver verdict", p.text("r_verdict"), "Doesn't matter");
   p.set("driver", "legacy");
   check("legacy driver verdict", p.text("r_verdict"), /Worth choosing/);
-  // fine-lead Z: full step 0.01
+  p.set("driver", "modern").set("check", 0.2);
+
+  // --- comparison table
+  const rows = p.doc.getElementById("rows").innerHTML;
+  check("table marks non-magic heights", /✗/.test(rows), true);
+  check("table flags flow-capped rows", /\*/.test(rows), true);
+  check("selected row is marked", /◀/.test(rows), true);
+
+  // --- fine-lead Z: 0.01 mm full step
   p.set("preset", "2,200,16,1");
   check("T8x2 full step", p.text("r_full"), "10.0 µm");
 });
