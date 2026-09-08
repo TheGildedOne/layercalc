@@ -15,6 +15,7 @@ domain. Push to `main` and GitHub Actions builds and deploys it.
 |---|---|---|
 | **Build + deploy** | every push to `main` | GitHub Actions → GitHub Pages (`.github/workflows/publish.yml`) |
 | **Validation** | every build | `check.py` — fails the deploy on broken links, missing SEO tags, bad JSON-LD or JS syntax errors |
+| **Tests** | every build | `node tests/run.js` — drives each calculator headlessly and checks its real output |
 | **Indexing** | every deploy | `sitemap.xml` + IndexNow ping to Bing/DuckDuckGo/Yandex |
 | **Ads / analytics** | when you switch them on | `MONETIZATION` block at the top of `build.py` — see `docs/ADS.md` |
 
@@ -45,7 +46,7 @@ Setup walkthrough (repo, domain, DNS, search consoles): **`docs/DEPLOY.md`**.
 **Preview locally**
 
 ```bash
-python build.py && python check.py && python -m http.server 8765 -d dist
+python build.py && python check.py && node tests/run.js && python -m http.server 8765 -d dist
 ```
 
 then open <http://localhost:8765>.
@@ -64,7 +65,14 @@ The push deploys it.
    `LC.show(id, bool)`, `LC.currencyPicker(containerId)`, `LC.copyButton(btnId, fn)`, `LC.download(name, text)`,
    `LC.modePanels(radioName)`.
 4. Put `<!--ARTICLE-->` after the script, then the article HTML (formula, worked example, guidance).
-5. `python scripts/make_og.py` to generate its share image, then build, check, commit, push.
+5. Add assertions for it in `tests/run.js` — a couple of known-good input/output pairs and any edge case
+   (zero, blank, absurd values). The tests drive the real built page, so they catch a broken formula
+   that `check.py` cannot see.
+6. `python scripts/make_og.py` to generate its share image, then build, check, test, commit, push.
+
+**Tests** — `node tests/run.js` after a build. `tests/dom.js` is a small DOM shim (no dependencies) that
+runs each page's real script; `tests/run.js` sets inputs and asserts on the rendered output text rather
+than reimplementing any maths.
 
 **Change the site name, domain or categories** — the `SITE` and `CATEGORIES` blocks at the top of
 `build.py`, plus `public/CNAME` for the domain.

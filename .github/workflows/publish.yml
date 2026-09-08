@@ -38,6 +38,11 @@ jobs:
       - name: Validate links, SEO tags and calculator scripts
         run: python check.py
 
+      # Drives every calculator's real form headlessly and checks the real
+      # output text. A wrong formula fails the deploy rather than shipping.
+      - name: Test calculator outputs
+        run: node tests/run.js
+
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3

@@ -1,19 +1,20 @@
 {
   "title": "Resin Print Cost Calculator",
-  "page_title": "Resin Print Cost Calculator – Resin, IPA & FEP",
-  "description": "Cost a resin print: resin plus waste, IPA for washing, FEP film wear, electricity and consumables. Per-print and per-part cost for any SLA/MSLA printer.",
-  "lede": "Resin prints cost more than the resin. This adds the alcohol you wash with, the FEP film you wear out, the electricity and the gloves, and gives you a per-print and per-part figure you can actually price from.",
-  "short": "Resin plus IPA, FEP wear, power and consumables — the real cost of an SLA/MSLA print.",
+  "page_title": "Resin Print Cost Calculator – Resin, IPA, FEP & LCD",
+  "description": "Cost a resin print properly: resin by ml or grams with density conversion, FEP wear per layer, configurable IPA use, LCD amortisation, power and consumables.",
+  "lede": "Resin prints cost more than the resin. This adds the alcohol you actually replace, FEP wear counted per layer rather than per print, LCD screen amortisation, power and consumables — and takes resin in millilitres or grams.",
+  "short": "Resin by volume or weight, FEP wear per layer, IPA, LCD amortisation, power and consumables.",
   "category": "cost",
   "order": 30,
-  "updated": "2026-09-07",
+  "updated": "2026-09-08",
   "related": ["3d-print-pricing-calculator", "3d-printer-electricity-cost-calculator", "filament-cost-calculator", "print-time-estimator"],
   "faq": [
-    {"q": "How much does resin cost per print?", "a": "Standard resin runs $20–40 per liter, so $0.02–0.04 per ml. A 25 ml miniature costs $0.50–1.00 in resin, but after waste, IPA, FEP wear and power the real figure is usually 30–60% higher. That's what this calculator adds in."},
-    {"q": "How much resin is wasted on a print?", "a": "Between 5% and 15% typically: resin that clings to the part and supports and is washed away, resin left in the vat after a session, cured-on-FEP failures, and the filter you pour through. Ten percent is a fair default for a tidy workflow."},
-    {"q": "How do I cost the IPA?", "a": "Don't count the volume in the wash bucket — count what you replace. If you top up or change 500 ml every 15 prints, that's about 33 ml per print. At $8 per liter that's under 30 cents. Water-washable resin replaces this with a smaller water-and-disposal cost."},
-    {"q": "How many prints does an FEP film last?", "a": "Anywhere from 20 to 100+ depending on care, resin and how much of the plate you cover. 50–60 is a reasonable middle for standard FEP; nFEP and PFA films often last longer. Failures and heavy supports shorten it."},
-    {"q": "Should I include the curing station?", "a": "It's usually small — a UV curing station draws 20–40 W for a few minutes. If you want it in, add its watts × hours to the electricity line, or just add a few cents under consumables."}
+    {"q": "How much does resin cost per print?", "a": "Standard resin runs $20–40 per litre, so $0.02–0.04 per ml. A 25 ml miniature is $0.50–1.00 in resin alone, but once waste, IPA, FEP wear, screen amortisation and power are counted the real figure is usually 30–60% higher. Tall prints cost disproportionately more because FEP and screen wear are driven by layer count, not volume."},
+    {"q": "How do I convert resin grams to millilitres?", "a": "Divide grams by the resin's density in g/cm³. Most photopolymer resins are 1.05–1.25 g/cm³, with 1.10 a reasonable default, so 1,000 g is roughly 900 ml. Manufacturers publish density on the technical data sheet — use that figure rather than a generic one if you have it, because a 15% density error is a 15% cost error."},
+    {"q": "Should FEP life be counted in prints or layers?", "a": "Layers. Every layer is one peel cycle, and peel cycles are what fatigue the film — so a 4,000-layer miniature wears the FEP roughly ten times as much as a 400-layer coaster. Published figures are around 3,000–10,000 layers for standard FEP and 6,000–30,000 for nFEP or ACF. Cross-sectional area matters too: wide flat layers generate far more suction than small ones."},
+    {"q": "Should I include the LCD screen in my costs?", "a": "If you print regularly, yes. Monochrome LCDs are rated at roughly 2,000 hours of UV exposure (older RGB panels about 500), and replacements run $30–150. At 2,000 hours and a $60 screen that is about $0.03 per print hour — small per print, but a real recurring hardware cost that people forget when quoting commercial work."},
+    {"q": "How much resin does a print actually waste?", "a": "More than the slicer implies. Resin clings to the model and supports and washes away, some stays in the vat and on the filter, and prints fail. Ten percent is reasonable for a tidy workflow with a well-drained plate; experienced sellers often budget 20–30% because they include failures and the resin lost draining between bottles. The field is editable because the honest answer depends on your process."},
+    {"q": "Does draining the plate before washing reduce IPA use?", "a": "Substantially. Letting the plate drip back into the vat for a few minutes returns a meaningful share of the uncured resin and means the alcohol picks up far less, so it stays usable for longer. Two-stage washing — a dirty bath first, then a clean one — stretches it further, and letting used IPA settle so the sludge drops out lets you decant and reuse the clear alcohol several times."}
   ]
 }
 <form id="f" class="calc-form" novalidate>
@@ -21,39 +22,93 @@
     <legend>Resin</legend>
     <div class="fields">
       <div class="field"><label for="bprice">Bottle price</label><div class="inwrap prefix"><span class="pre" data-cur>$</span><input type="number" id="bprice" value="30" min="0" step="0.01" inputmode="decimal"></div></div>
-      <div class="field"><label for="bvol">Bottle volume</label><div class="inwrap"><input type="number" id="bvol" value="1000" min="1" step="1" inputmode="decimal"><span class="unit">ml</span></div></div>
-      <div class="field"><label for="used">Resin used by the print</label><div class="inwrap"><input type="number" id="used" value="25" min="0" step="0.1" inputmode="decimal"><span class="unit">ml</span></div><p class="hint">From the slicer, supports included.</p></div>
-      <div class="field"><label for="waste">Waste</label><div class="inwrap"><input type="number" id="waste" value="10" min="0" max="100" step="1" inputmode="decimal"><span class="unit">%</span></div><p class="hint">Residue, vat leftovers, failures.</p></div>
+      <div class="field"><label for="bsize">Bottle size</label><div class="inwrap"><input type="number" id="bsize" value="1000" min="0.001" step="any" inputmode="decimal"><span class="unit" id="bunit">ml</span></div></div>
+      <div class="field"><label for="bsizeunit">Bottle sold in</label>
+        <select id="bsizeunit"><option value="ml" selected>millilitres</option><option value="l">litres</option><option value="g">grams</option><option value="kg">kilograms</option></select>
+        <p class="hint">Many resins are sold by weight.</p></div>
+      <div class="field"><label for="used">Resin used by the print</label><div class="inwrap"><input type="number" id="used" value="25" min="0" step="0.1" inputmode="decimal"><span class="unit" id="uunit">ml</span></div><p class="hint">From the slicer, supports included.</p></div>
+      <div class="field"><label for="usedunit">Entered as</label>
+        <select id="usedunit"><option value="ml" selected>millilitres</option><option value="g">grams</option></select></div>
+      <div class="field"><label for="restype">Resin type</label>
+        <select id="restype">
+          <option value="1.10" selected>Standard / general purpose (1.10)</option>
+          <option value="1.13">Water-washable (1.13)</option>
+          <option value="1.08">ABS-like / tough (1.08)</option>
+          <option value="1.10">Plant-based (1.10)</option>
+          <option value="1.18">High-temp / engineering (1.18)</option>
+          <option value="1.10">Flexible (1.10)</option>
+          <option value="custom">Custom density</option>
+        </select></div>
+      <div class="field"><label for="dens">Density</label><div class="inwrap"><input type="number" id="dens" value="1.10" min="0.5" max="3" step="0.01" inputmode="decimal"><span class="unit">g/cm³</span></div><p class="hint">On the bottle's data sheet. Only used for weight ⇄ volume.</p></div>
+      <div class="field"><label for="waste">Waste allowance</label><div class="inwrap"><input type="number" id="waste" value="10" min="0" max="100" step="1" inputmode="decimal"><span class="unit">%</span></div><p class="hint">Drip-off, vat and filter losses, failures. 10% tidy, 20–30% commercial.</p></div>
       <div class="field"><label for="parts">Parts on the plate</label><div class="inwrap"><input type="number" id="parts" value="1" min="1" step="1" inputmode="numeric"><span class="unit">parts</span></div></div>
     </div>
   </fieldset>
+
   <fieldset class="group">
-    <legend>Washing &amp; film</legend>
+    <legend>Print</legend>
     <div class="fields">
-      <div class="field"><label for="ipa">IPA price per liter</label><div class="inwrap prefix"><span class="pre" data-cur>$</span><input type="number" id="ipa" value="8" min="0" step="0.01" inputmode="decimal"></div></div>
-      <div class="field"><label for="ipaml">IPA replaced per print</label><div class="inwrap"><input type="number" id="ipaml" value="30" min="0" step="1" inputmode="decimal"><span class="unit">ml</span></div><p class="hint">What you top up or throw away, not what's in the bucket.</p></div>
-      <div class="field"><label for="fep">FEP / nFEP sheet cost</label><div class="inwrap prefix"><span class="pre" data-cur>$</span><input type="number" id="fep" value="8" min="0" step="0.01" inputmode="decimal"></div></div>
-      <div class="field"><label for="fepn">Prints per sheet</label><div class="inwrap"><input type="number" id="fepn" value="60" min="1" step="1" inputmode="numeric"><span class="unit">prints</span></div></div>
+      <div class="field"><label for="layers">Layer count</label><div class="inwrap"><input type="number" id="layers" value="1200" min="1" step="1" inputmode="numeric"><span class="unit">layers</span></div><p class="hint">From the slicer, or print height ÷ layer height.</p></div>
+      <div class="field"><label for="hrs">Print time</label><div class="inwrap"><input type="number" id="hrs" value="3" min="0" step="0.1" inputmode="decimal"><span class="unit">hours</span></div></div>
     </div>
   </fieldset>
+
   <fieldset class="group">
-    <legend>Power &amp; consumables</legend>
+    <legend>Release film (FEP)</legend>
+    <div class="seg" role="radiogroup" aria-label="How to count film life">
+      <label><input type="radio" name="fepmode" id="fep_layers" value="layers" checked><span>By layers (accurate)</span></label>
+      <label><input type="radio" name="fepmode" id="fep_prints" value="prints"><span>By prints (rough)</span></label>
+    </div>
     <div class="fields">
-      <div class="field"><label for="watts">Printer power draw</label><div class="inwrap"><input type="number" id="watts" value="60" min="0" step="1" inputmode="decimal"><span class="unit">W</span></div><p class="hint">Most MSLA printers average 40–80 W.</p></div>
-      <div class="field"><label for="hrs">Print time</label><div class="inwrap"><input type="number" id="hrs" value="3" min="0" step="0.1" inputmode="decimal"><span class="unit">hours</span></div></div>
+      <div class="field"><label for="fep">Sheet cost</label><div class="inwrap prefix"><span class="pre" data-cur>$</span><input type="number" id="fep" value="8" min="0" step="0.01" inputmode="decimal"></div></div>
+      <div class="field" data-fep="layers"><label for="feptype">Film type</label>
+        <select id="feptype">
+          <option value="6000" selected>Standard FEP (≈6,000 layers)</option>
+          <option value="12000">nFEP (≈12,000 layers)</option>
+          <option value="20000">ACF (≈20,000 layers)</option>
+          <option value="custom">Custom</option>
+        </select></div>
+      <div class="field" data-fep="layers"><label for="feplayers">Layers per sheet</label><div class="inwrap"><input type="number" id="feplayers" value="6000" min="1" step="100" inputmode="numeric"><span class="unit">layers</span></div><p class="hint">Published figures vary widely; see the notes below.</p></div>
+      <div class="field" data-fep="prints" hidden><label for="fepn">Prints per sheet</label><div class="inwrap"><input type="number" id="fepn" value="40" min="1" step="1" inputmode="numeric"><span class="unit">prints</span></div><p class="hint">Only right if your prints are all similar heights.</p></div>
+    </div>
+  </fieldset>
+
+  <fieldset class="group">
+    <legend>Washing</legend>
+    <div class="seg" role="radiogroup" aria-label="How to count IPA">
+      <label><input type="radio" name="ipamode" id="ipa_change" value="change" checked><span>Per change (accurate)</span></label>
+      <label><input type="radio" name="ipamode" id="ipa_simple" value="simple"><span>Per print (simple)</span></label>
+    </div>
+    <div class="fields">
+      <div class="field"><label for="ipa">IPA price</label><div class="inwrap prefix"><span class="pre" data-cur>$</span><input type="number" id="ipa" value="8" min="0" step="0.01" inputmode="decimal"></div><p class="hint">Per litre. Set to ~0 for water-washable resin.</p></div>
+      <div class="field" data-ipa="change"><label for="ipavol">Volume replaced each change</label><div class="inwrap"><input type="number" id="ipavol" value="500" min="0" step="10" inputmode="decimal"><span class="unit">ml</span></div></div>
+      <div class="field" data-ipa="change"><label for="ipaevery">Prints between changes</label><div class="inwrap"><input type="number" id="ipaevery" value="15" min="1" step="1" inputmode="numeric"><span class="unit">prints</span></div><p class="hint">Longer if you drain the plate first, two-stage wash, or settle and decant.</p></div>
+      <div class="field" data-ipa="simple" hidden><label for="ipaml">IPA replaced per print</label><div class="inwrap"><input type="number" id="ipaml" value="30" min="0" step="1" inputmode="decimal"><span class="unit">ml</span></div><p class="hint">What you throw away, not what's in the bucket.</p></div>
+    </div>
+  </fieldset>
+
+  <fieldset class="group">
+    <legend>Hardware &amp; power</legend>
+    <div class="fields">
+      <div class="field"><label class="check" for="uselcd"><input type="checkbox" id="uselcd" checked> Include LCD screen amortisation</label></div>
+      <div class="field" data-lcd><label for="lcdcost">Screen replacement cost</label><div class="inwrap prefix"><span class="pre" data-cur>$</span><input type="number" id="lcdcost" value="60" min="0" step="1" inputmode="decimal"></div><p class="hint">Typically $30–150 depending on size.</p></div>
+      <div class="field" data-lcd><label for="lcdhours">Rated screen life</label><div class="inwrap"><input type="number" id="lcdhours" value="2000" min="1" step="100" inputmode="numeric"><span class="unit">hours</span></div><p class="hint">Mono ≈2,000 h; older RGB ≈500 h.</p></div>
+      <div class="field"><label for="watts">Printer power draw</label><div class="inwrap"><input type="number" id="watts" value="60" min="0" step="1" inputmode="decimal"><span class="unit">W</span></div><p class="hint">Most MSLA printers average 40–100 W.</p></div>
       <div class="field"><label for="rate">Electricity price</label><div class="inwrap prefix"><span class="pre" data-cur>$</span><input type="number" id="rate" value="0.15" min="0" step="0.01" inputmode="decimal"></div><p class="hint">Per kWh.</p></div>
-      <div class="field"><label for="cons">Consumables per print</label><div class="inwrap prefix"><span class="pre" data-cur>$</span><input type="number" id="cons" value="0.15" min="0" step="0.01" inputmode="decimal"></div><p class="hint">Gloves, towels, filters, curing.</p></div>
+      <div class="field"><label for="cons">Other consumables per print</label><div class="inwrap prefix"><span class="pre" data-cur>$</span><input type="number" id="cons" value="0.15" min="0" step="0.01" inputmode="decimal"></div><p class="hint">Gloves, paper towels, filters, curing.</p></div>
     </div>
   </fieldset>
 
   <div class="results">
     <div class="result primary"><div class="l">Total cost of this print</div><div class="v" id="r_total">—</div><div class="s" id="r_perpart"></div></div>
     <div class="result"><div class="l">Resin (incl. waste)</div><div class="v" id="r_resin">—</div><div class="s" id="r_perml"></div></div>
-    <div class="result"><div class="l">Washing</div><div class="v" id="r_wash">—</div></div>
-    <div class="result"><div class="l">FEP wear</div><div class="v" id="r_fep">—</div></div>
+    <div class="result"><div class="l">Washing</div><div class="v" id="r_wash">—</div><div class="s" id="r_washs"></div></div>
+    <div class="result"><div class="l">FEP wear</div><div class="v" id="r_fep">—</div><div class="s" id="r_feps"></div></div>
+    <div class="result"><div class="l">LCD screen</div><div class="v" id="r_lcd">—</div><div class="s" id="r_lcds"></div></div>
     <div class="result"><div class="l">Electricity</div><div class="v" id="r_elec">—</div><div class="s" id="r_kwh"></div></div>
-    <div class="result"><div class="l">Consumables</div><div class="v" id="r_cons">—</div></div>
+    <div class="result"><div class="l">Other consumables</div><div class="v" id="r_cons">—</div></div>
   </div>
+  <div id="warn" class="warn-box" hidden></div>
   <div class="actions">
     <button type="button" class="btn-ghost" data-reset>Reset</button>
     <span id="cur"></span>
@@ -61,23 +116,92 @@
 </form>
 <script>
 (function () {
+  var applyFep = LC.modePanels("fepmode", "data-fep");
+  var applyIpa = LC.modePanels("ipamode", "data-ipa");
+  LC.el("restype").addEventListener("change", function () { if (this.value !== "custom") LC.el("dens").value = this.value; });
+  LC.el("feptype").addEventListener("change", function () { if (this.value !== "custom") LC.el("feplayers").value = this.value; });
+
   function calc() {
-    var perMl = LC.num("bprice") / LC.num("bvol");
-    var used = LC.num("used") || 0, waste = (LC.num("waste") || 0) / 100, parts = Math.max(1, LC.num("parts") || 1);
-    var resin = used * (1 + waste) * perMl;
-    var wash = (LC.num("ipaml") || 0) / 1000 * (LC.num("ipa") || 0);
-    var fep = (LC.num("fep") || 0) / Math.max(1, LC.num("fepn") || 1);
-    var kwh = (LC.num("watts") || 0) / 1000 * (LC.num("hrs") || 0);
+    var fepMode = applyFep(), ipaMode = applyIpa();
+    var dens = LC.num("dens");
+    if (!(dens > 0)) dens = 1.10;
+    var bunit = LC.val("bsizeunit"), uunit = LC.val("usedunit");
+    LC.out("bunit", { ml: "ml", l: "L", g: "g", kg: "kg" }[bunit]);
+    LC.out("uunit", uunit === "g" ? "g" : "ml");
+
+    // everything normalised to millilitres
+    var bsize = LC.num("bsize");
+    var bottleMl = bunit === "ml" ? bsize : bunit === "l" ? bsize * 1000
+                 : bunit === "g" ? bsize / dens : bsize * 1000 / dens;
+    var usedRaw = LC.num("used") || 0;
+    var usedMl = uunit === "g" ? usedRaw / dens : usedRaw;
+
+    var perMl = LC.num("bprice") / bottleMl;
+    var waste = (LC.num("waste") || 0) / 100;
+    var parts = Math.max(1, LC.num("parts") || 1);
+    var layers = Math.max(1, LC.num("layers") || 1);
+    var hrs = LC.num("hrs") || 0;
+
+    var resin = usedMl * (1 + waste) * perMl;
+
+    var fepCost = LC.num("fep") || 0, fepShare;
+    if (fepMode === "layers") {
+      var fl = Math.max(1, LC.num("feplayers") || 1);
+      fepShare = fepCost * layers / fl;
+      LC.out("r_feps", LC.fmt(layers, 0) + " of " + LC.fmt(fl, 0) + " layers = " + LC.fmt(layers / fl * 100, 1) + "% of a sheet");
+    } else {
+      var fn = Math.max(1, LC.num("fepn") || 1);
+      fepShare = fepCost / fn;
+      LC.out("r_feps", "1 of " + LC.fmt(fn, 0) + " prints");
+    }
+
+    var ipaPrice = LC.num("ipa") || 0, ipaMl;
+    if (ipaMode === "change") {
+      var vol = LC.num("ipavol") || 0, every = Math.max(1, LC.num("ipaevery") || 1);
+      ipaMl = vol / every;
+      LC.out("r_washs", LC.fmt(ipaMl, 0) + " ml per print (" + LC.fmt(vol, 0) + " ml every " + LC.fmt(every, 0) + ")");
+    } else {
+      ipaMl = LC.num("ipaml") || 0;
+      LC.out("r_washs", LC.fmt(ipaMl, 0) + " ml per print");
+    }
+    var wash = ipaMl / 1000 * ipaPrice;
+
+    var lcd = 0;
+    if (LC.checked("uselcd")) {
+      var lh = Math.max(1, LC.num("lcdhours") || 1);
+      lcd = (LC.num("lcdcost") || 0) * hrs / lh;
+      LC.out("r_lcds", LC.money((LC.num("lcdcost") || 0) / lh, 3) + " per print hour");
+    } else { LC.out("r_lcds", "not included"); }
+    var lcdPanels = document.querySelectorAll("[data-lcd]");
+    for (var i = 0; i < lcdPanels.length; i++) lcdPanels[i].hidden = !LC.checked("uselcd");
+
+    var kwh = (LC.num("watts") || 0) / 1000 * hrs;
     var elec = kwh * (LC.num("rate") || 0);
     var cons = LC.num("cons") || 0;
-    var total = resin + wash + fep + elec + cons;
+    var total = resin + wash + fepShare + lcd + elec + cons;
+
     LC.out("r_total", LC.money(total));
-    LC.out("r_perpart", parts > 1 ? LC.money(total / parts) + " per part (" + parts + " on the plate)" : "resin is " + LC.fmt(total > 0 ? resin / total * 100 : 0, 0) + "% of the total");
+    LC.out("r_perpart", parts > 1 ? LC.money(total / parts) + " per part (" + parts + " on the plate)"
+      : "resin is " + LC.fmt(total > 0 ? resin / total * 100 : 0, 0) + "% of the total");
     LC.out("r_resin", LC.money(resin));
-    LC.out("r_perml", isFinite(perMl) ? LC.money(perMl, 3) + " per ml" : "");
-    LC.out("r_wash", LC.money(wash)); LC.out("r_fep", LC.money(fep));
-    LC.out("r_elec", LC.money(elec)); LC.out("r_kwh", LC.fmt(kwh, 2) + " kWh");
+    LC.out("r_perml", isFinite(perMl) ? LC.money(perMl, 3) + " per ml · " + LC.money(perMl * dens, 3) + " per g" : "");
+    LC.out("r_wash", LC.money(wash));
+    LC.out("r_fep", LC.money(fepShare));
+    LC.out("r_lcd", LC.checked("uselcd") ? LC.money(lcd) : "—");
+    LC.out("r_elec", LC.money(elec));
+    LC.out("r_kwh", LC.fmt(kwh, 2) + " kWh");
     LC.out("r_cons", LC.money(cons));
+
+    var msgs = [];
+    if (uunit === "g" || bunit === "g" || bunit === "kg") {
+      if (dens < 0.9 || dens > 1.4) msgs.push("A density of " + LC.fmt(dens, 2) + " g/cm³ is outside the normal 1.05–1.25 range for photopolymer resin. Check the bottle's data sheet.");
+    }
+    if (fepMode === "layers" && layers / Math.max(1, LC.num("feplayers") || 1) > 0.5) {
+      msgs.push("This one print uses over half a sheet of film. That is plausible for a very tall, fine-layer print, but check the layer count.");
+    }
+    if (hrs > 0 && layers / hrs > 3000) msgs.push("That is over 3,000 layers per hour, which is faster than any current MSLA printer. Check the layer count and print time.");
+    LC.show("warn", msgs.length > 0);
+    LC.html("warn", msgs.join("<br><br>"));
   }
   LC.currencyPicker("cur");
   LC.bind("f", calc);
@@ -85,31 +209,62 @@
 </script>
 <!--ARTICLE-->
 <h2>Why resin prints cost more than the resin</h2>
-<p>Filament printing has one consumable. Resin printing has four, and only one of them shows up in the slicer. The calculator adds them together:</p>
-<div class="formula">resin       = ml used × (1 + waste%) × bottle price ÷ bottle volume<br>washing     = IPA replaced per print (ml) ÷ 1000 × price per liter<br>FEP wear    = sheet cost ÷ prints per sheet<br>electricity = watts ÷ 1000 × hours × price per kWh<br>total       = resin + washing + FEP wear + electricity + consumables</div>
+<p>Filament printing has one consumable. Resin printing has four or five, and only one of them appears in the slicer. Two of those — the release film and the LCD screen — wear according to <em>layer count and exposure time</em>, not resin volume, which is why a tall miniature and a squat coaster using the same amount of resin do not cost the same.</p>
+<div class="formula">resin       = ml used × (1 + waste%) × bottle price ÷ bottle volume in ml<br>washing     = IPA replaced per print (ml) ÷ 1000 × price per litre<br>FEP wear    = sheet cost × this print's layers ÷ layers per sheet<br>LCD wear    = screen cost × print hours ÷ rated screen hours<br>electricity = watts ÷ 1000 × hours × price per kWh<br>total       = all of the above + other consumables</div>
+
+<h3>Weight and volume</h3>
+<p>Resin is sold both ways, and the slicer reports millilitres, so one conversion is unavoidable:</p>
+<div class="formula">millilitres = grams ÷ density (g/cm³)</div>
+<p>Most photopolymer resins fall between <strong>1.05 and 1.25 g/cm³</strong>. A 1 kg bottle at 1.10 g/cm³ holds about 909 ml, not 1,000 — assuming otherwise makes every cost roughly 10% too low. The presets are typical values by resin family; if your bottle's technical data sheet gives a figure, use that instead, because the spread across that range is a 20% swing in cost per millilitre.</p>
 
 <div class="example">
 <h3>Worked example</h3>
-<p>A plate of four 25 ml miniatures (100 ml total) in $30/L resin, three hours on a 60 W printer.</p>
+<p>Four 25 ml miniatures (100 ml total) at 0.03 mm layers on a 60 mm-tall plate — so 2,000 layers — in $30/L resin, three hours on a 60 W printer, standard FEP.</p>
 <ul>
   <li>Resin: 100 ml × 1.10 × $0.03 = <strong>$3.30</strong></li>
-  <li>Washing: 30 ml IPA at $8/L = <strong>$0.24</strong></li>
-  <li>FEP: $8 ÷ 60 prints = <strong>$0.13</strong></li>
+  <li>Washing: 500 ml every 15 prints = 33 ml at $8/L = <strong>$0.27</strong></li>
+  <li>FEP: $8 × 2,000 ÷ 6,000 layers = <strong>$2.67</strong></li>
+  <li>LCD: $60 × 3 h ÷ 2,000 h = <strong>$0.09</strong></li>
   <li>Electricity: 0.06 kW × 3 h × $0.15 = <strong>$0.03</strong></li>
-  <li>Consumables: <strong>$0.15</strong></li>
+  <li>Other consumables: <strong>$0.15</strong></li>
 </ul>
-<p>Total <strong>$3.85</strong>, or about <strong>$0.96 per miniature</strong>. Resin is 86% of it — but if you'd quoted on the slicer's 100 ml alone you'd have said $3.00 and been 28% under.</p>
+<p>Total <strong>$6.51</strong>, or about <strong>$1.63 per miniature</strong>. Note what changed against the old per-print film assumption: counting FEP by layers turns a $0.13 line into $2.67 and makes film the second-largest cost in the job. That is the correct answer for a 2,000-layer print, and it is why tall fine-layer work is more expensive than volume alone suggests.</p>
 </div>
 
 <h2>Getting the inputs right</h2>
+
 <h3>Waste</h3>
-<p>Resin that clings to the model and supports and washes off in the IPA is the biggest item — a heavily supported miniature can carry 10% of its own volume in uncured resin. Add what's left in the vat when you pour back through a filter, the occasional print stuck to the FEP, and a failure now and then. 10% is honest for a careful workflow; 15–20% if you're still learning.</p>
+<p>Resin that clings to the model and supports and washes away is the biggest single item — a heavily supported miniature can carry 10% of its own volume in uncured resin. Add what stays in the vat and on the filter when you pour back, the occasional print cured onto the film, and outright failures. Ten percent is honest for a careful workflow where the plate is left to drip back into the vat before washing. Sellers who include failures and bottle-to-bottle transfer losses commonly budget <strong>20–30%</strong>. The field is editable because there is no single correct number here.</p>
+
 <h3>IPA</h3>
-<p>The bucket volume is irrelevant; what matters is how much you replace and how often. If you dump 500 ml every 15 prints, enter 33 ml. Two-stage washing (dirty then clean) stretches alcohol a long way. If you use water-washable resin, set the IPA line to a few cents for water and disposal — but note water-washable resin usually costs more per liter.</p>
-<h3>FEP film</h3>
-<p>A standard FEP sheet lasts 20 to 100+ prints depending on how well it's treated. Big flat plates, heavy supports and failures shorten it; nFEP and PFA release films often go longer. If you replace the film every couple of months, count the prints between changes.</p>
+<p>The volume sitting in your wash station is irrelevant; what costs money is what you <em>replace</em>. The per-change mode reflects how people actually work: you use the same alcohol for a run of prints, then dump and refill. Three things stretch it a long way — draining the plate back into the vat for a few minutes before washing, two-stage washing with a dirty bath followed by a clean one, and letting used IPA stand so the cured sludge settles out, then decanting the clear alcohol. A workflow doing all three can go many times longer between changes than one that doesn't.</p>
+<p>Water-washable resin replaces this with a much smaller water and disposal cost — set the IPA price near zero — but note that water-washable resin usually costs more per litre, and the wastewater still needs curing before disposal.</p>
+
+<h3>Release film</h3>
+<p>Every layer is one peel cycle, and peel cycles are what fatigue the film. Counting film life in prints only works if all your prints are similar heights; counting in layers is correct regardless. Published lifespans vary widely between sources and manufacturers:</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Film</th><th>Commonly published life</th><th>Preset used here</th></tr></thead>
+<tbody>
+<tr><td>Standard FEP</td><td>≈3,000 – 10,000 layers</td><td>6,000</td></tr>
+<tr><td>nFEP</td><td>≈6,000 – 20,000 layers</td><td>12,000</td></tr>
+<tr><td>ACF</td><td>≈15,000 – 30,000 layers</td><td>20,000</td></tr>
+</tbody></table></div>
+<p>Treat these as order-of-magnitude figures, not specifications. Cross-sectional area matters as much as layer count: a wide flat layer generates far more suction on release than a small one, so a solid plate-filling print wears film much faster per layer than a few thin miniatures. Large flat bases, heavy supports and prints that fail and cure onto the film all shorten life. The honest way to use this is to track your own — note the layer counts between film changes for a few sheets, and replace the preset with your number.</p>
+
+<h3>LCD screen</h3>
+<p>The masking LCD degrades under constant UV exposure and is a genuine recurring cost for anyone printing commercially. Monochrome panels are typically rated around <strong>2,000 hours</strong>; the older RGB panels they replaced were nearer 500. Replacements run roughly <strong>$30–150</strong> depending on size and printer. That works out to a few cents per print hour — small individually, easy to forget entirely, and it adds up across a production run. Rated hours are a manufacturer figure and real life depends on duty cycle and cooling; screens usually fade gradually rather than failing outright, showing up as under-cured areas long before they stop working.</p>
+
 <h3>Power</h3>
-<p>MSLA printers are frugal: 40–80 W is typical for a 4K–14K desktop machine, with larger 10-inch-plus printers around 80–120 W. Electricity ends up being a few cents per print. The curing station and wash station are similarly small; fold them into consumables unless you run them for long stretches.</p>
+<p>MSLA printers are frugal: 40–80 W is typical for a desktop machine, and larger 10-inch-plus printers 80–120 W. Electricity is a few cents per print. Wash and cure stations are similarly small; fold them into other consumables unless you run them for long stretches.</p>
+
+<h2>Sources and assumptions</h2>
+<ul>
+  <li><strong>Resin density 1.05–1.25 g/cm³</strong> — from published manufacturer technical data sheets across standard, water-washable and ABS-like resins. Individual products vary; use your own bottle's figure where available.</li>
+  <li><strong>FEP life in layers</strong> — vendor and community figures cluster around 3,000–10,000 layers for standard FEP and 6,000–30,000 for nFEP and ACF. Sources disagree substantially, which is why the preset is editable and the article says so.</li>
+  <li><strong>LCD life ≈2,000 h mono / ≈500 h RGB, $30–150 replacement</strong> — manufacturer ratings and replacement part pricing.</li>
+  <li><strong>Waste 10–30%</strong> — no authoritative figure exists; the range reflects the difference between a drained, tidy workflow and a commercial one that counts failures.</li>
+</ul>
+<p>Everything above is a starting point that you should replace with measurements from your own setup. The calculator is exact; the inputs are where the uncertainty lives, and each field is editable for that reason.</p>
 
 <h2>From cost to price</h2>
-<p>This page costs the print. To turn it into a selling price — machine depreciation, your time cleaning and curing, a failure allowance, markup and marketplace fees — take the total into the <a href="/3d-print-pricing-calculator/">3D print pricing calculator</a> and enter it as material cost. Resin post-processing is labor-intensive, so be honest about the minutes: washing, support removal, curing and the inevitable sanding of support nubs is rarely under ten minutes a plate.</p>
+<p>This page costs the print. To turn it into a selling price — machine depreciation, your time washing, curing and removing supports, a failure allowance, markup and marketplace fees — take the total into the <a href="/3d-print-pricing-calculator/">3D print pricing calculator</a> and enter it as material cost. Resin post-processing is labour-intensive, so be honest about the minutes: washing, support removal, curing and sanding support nubs is rarely under ten minutes a plate.</p>

@@ -1,0 +1,340 @@
+#!/usr/bin/env node
+/*
+ * Calculator tests. Loads each built page, drives its real form, and checks the
+ * real output text — no reimplementation of the formulas here, because a test
+ * that restates the maths tests nothing.
+ *
+ * Run after a build:  node tests/run.js
+ */
+"use strict";
+
+const fs = require("fs");
+const path = require("path");
+const { makeEnv } = require("./dom.js");
+
+const DIST = path.join(__dirname, "..", "dist");
+const APP = fs.readFileSync(path.join(DIST, "static", "app.js"), "utf8");
+
+let passed = 0, failed = 0;
+const failures = [];
+
+function load(slug) {
+  const html = fs.readFileSync(path.join(DIST, slug, "index.html"), "utf8");
+  const env = makeEnv(html, APP);
+  const doc = env.doc;
+  return {
+    doc,
+    set(id, value) {
+      const el = doc.getElementById(id);
+      if (!el) throw new Error(`no element #${id} on /${slug}/`);
+      if (el.type === "checkbox" || el.type === "radio") el.checked = !!value;
+      else el.value = String(value);
+      el.dispatchEvent({ type: el.tagName === "SELECT" ? "change" : "input" });
+      // selects that feed other fields also listen for change
+      if (el.tagName === "SELECT") el.dispatchEvent({ type: "input" });
+      return this;
+    },
+    pick(id) {                       // choose a radio in a group
+      const el = doc.getElementById(id);
+      if (!el) throw new Error(`no radio #${id} on /${slug}/`);
+      doc.getElementsByName(el.name).forEach(r => { r.checked = false; });
+      el.checked = true;
+      el.dispatchEvent({ type: "change" });
+      return this;
+    },
+    text(id) {
+      const el = doc.getElementById(id);
+      if (!el) throw new Error(`no output #${id} on /${slug}/`);
+      return String(el.textContent).trim();
+    },
+    hidden(id) { return !!doc.getElementById(id).hidden; }
+  };
+}
+
+function check(name, actual, expected) {
+  const ok = expected instanceof RegExp ? expected.test(actual) : actual === expected;
+  if (ok) { passed++; }
+  else { failed++; failures.push(`${name}\n      expected: ${expected}\n      actual:   ${actual}`); }
+}
+
+function group(title, fn) {
+  process.stdout.write(`  ${title}\n`);
+  try { fn(); } catch (e) { failed++; failures.push(`${title} threw: ${e.message}`); }
+}
+
+/* ------------------------------------------------------------------ cost */
+
+group("filament-cost-calculator", () => {
+  const p = load("filament-cost-calculator");
+  // $20 per 1000 g, 50 g used, 5% waste, 0% failure
+  check("cost of 50 g at $0.02/g", p.text("r_cost"), "$1.00");
+  check("cost per gram", p.text("r_perg"), "$0.0200");
+  check("with 5% waste", p.text("r_adj"), "$1.05");
+  check("PLA g/m shown", p.text("r_gpm"), /2\.98 g per meter/);
+
+  // failure rate divides, not multiplies
+  p.set("fail", 10);
+  check("10% failure -> /0.9", p.text("r_adj"), "$1.17");
+
+  // meters mode converts via density
+  p.set("fail", 0).set("waste", 0).set("unit", "m").set("used", 100);
+  check("100 m of PLA = 298 g", p.text("r_grams"), /^298\.\d g/);
+
+  // edge: zero spool weight must not print Infinity
+  p.set("unit", "g").set("used", 50).set("spool", 0);
+  check("zero spool weight", p.text("r_perg"), "—");
+});
+
+group("3d-print-pricing-calculator", () => {
+  const p = load("3d-print-pricing-calculator");
+  check("total cost", p.text("r_cost"), "$8.16");
+  check("price at 50% markup", p.text("r_price"), "$12.24");
+  check("margin stated correctly", p.text("r_margin"), "50% markup = 33% margin");
+  check("profit", p.text("r_profit"), "$4.08");
+  check("material line", p.text("b_mat"), "$1.32");
+  check("depreciation line", p.text("b_dep"), "$0.80");
+
+  // Etsy fees are worked backwards from the target, not added on
+  p.set("mkt", "etsy");
+  check("etsy list price", p.text("r_list"), "$14.02");
+  check("etsy fee amount", p.text("r_fees"), /fees \$1\.78/);
+
+  // no marketplace -> list == price
+  p.set("mkt", "none");
+  check("direct list == price", p.text("r_list"), p.text("r_price"));
+
+  // edge: zero labour must not break the per-hour line
+  p.set("lab", 0);
+  check("zero labour minutes", p.text("r_hourly"), "");
+});
+
+group("resin-print-cost-calculator", () => {
+  const p = load("resin-print-cost-calculator");
+  // defaults: $30/1000 ml, 25 ml, 10% waste, 1200 layers of 6000, $8 sheet
+  check("resin incl. waste", p.text("r_resin"), "$0.83");
+  check("per ml", p.text("r_perml"), /\$0\.030 per ml/);
+  check("FEP by layers", p.text("r_fep"), "$1.60");
+  check("FEP share text", p.text("r_feps"), /1,?200 of 6,?000 layers/);
+  check("LCD amortisation", p.text("r_lcd"), "$0.090");   // <$0.10 renders 3 dp
+
+  // FEP must scale with layer count - the whole point of the change
+  p.set("layers", 2400);
+  check("double layers doubles FEP", p.text("r_fep"), "$3.20");
+  p.set("layers", 1200);
+
+  // grams in, converted by density
+  p.set("usedunit", "g").set("used", 27.5);       // 27.5 g / 1.10 = 25 ml
+  check("27.5 g at 1.10 = 25 ml cost", p.text("r_resin"), "$0.83");
+
+  // bottle sold by weight
+  p.set("usedunit", "ml").set("used", 25).set("bsizeunit", "kg").set("bsize", 1);
+  check("1 kg bottle at 1.10 = 909 ml", p.text("r_perml"), /\$0\.033 per ml/);
+
+  // IPA per-change mode: 500 ml / 15 prints = 33 ml
+  check("IPA per change", p.text("r_washs"), /33 ml per print/);
+  p.pick("ipa_simple").set("ipaml", 30);
+  check("IPA simple mode", p.text("r_wash"), "$0.24");
+
+  // LCD toggle off
+  p.set("uselcd", false);
+  check("LCD excluded", p.text("r_lcd"), "—");
+
+  // implausible density warns
+  p.set("usedunit", "g").set("restype", "custom").set("dens", 2.5);
+  check("silly density warns", p.hidden("warn"), false);
+});
+
+group("3d-printer-electricity-cost-calculator", () => {
+  const p = load("3d-printer-electricity-cost-calculator");
+  check("8 h at 120 W, $0.15", p.text("r_print"), "$0.14");
+  check("kWh", p.text("r_kwh"), /0\.96 kWh/);
+  check("per 24 h", p.text("r_day"), "$0.43");
+  p.set("watts", 0);
+  check("zero watts", p.text("r_print"), "$0.00");
+});
+
+/* ----------------------------------------------------------- calibration */
+
+group("e-steps-calculator", () => {
+  const p = load("e-steps-calculator");
+  // 93 steps, asked 100, mark 120, 23 left -> 97 actual -> 93*100/97
+  p.set("rem", 23);
+  check("marlin e-steps", p.text("r_new"), "95.88");
+  check("actual extruded", p.text("r_actual"), "97 mm");
+  check("under-extrusion wording", p.text("r_err"), /under-extruding by 3 mm/);
+  check("marlin gcode", p.text("snippet"), /M92 E95\.88/);
+
+  // Klipper inverts the formula - the bug this tool exists to prevent
+  p.pick("fw_klipper").set("cur", 33.5);
+  check("klipper rotation_distance", p.text("r_new"), "32.4950");
+  check("klipper config snippet", p.text("snippet"), /rotation_distance: 32\.4950/);
+
+  // exact calibration reads cleanly, not "exactly-extruding by 0 mm"
+  p.pick("fw_marlin").set("cur", 93).set("rem", 20);
+  check("perfect calibration", p.text("r_new"), "93.00");
+  check("no awkward zero wording", p.text("r_err"), "exactly what was requested");
+  check("no warning when correct", p.hidden("warn"), true);
+
+  // >10% change warns (slipping, not e-steps)
+  p.set("rem", 60);
+  check("large change warns", p.hidden("warn"), false);
+});
+
+group("flow-rate-calculator", () => {
+  const p = load("flow-rate-calculator");
+  check("new flow percent", p.text("r_new"), "93.8 %");
+  check("ratio equivalent", p.text("r_alt"), /0\.938/);
+  check("average wall", p.text("r_avg"), "0.480 mm");
+  p.set("fmt", "ratio").set("cur", 1);
+  check("ratio mode output", p.text("r_new"), "0.938");
+  // wildly uneven walls warn
+  p.set("fmt", "pct").set("cur", 100).set("w1", 0.4).set("w4", 0.6);
+  check("uneven walls warn", p.hidden("warn"), false);
+});
+
+group("shrinkage-compensation-calculator", () => {
+  const p = load("shrinkage-compensation-calculator");
+  check("X scale", p.text("r_x"), "100.60 %");
+  check("Y scale", p.text("r_y"), "100.50 %");
+  check("XY average", p.text("r_xy"), "100.55 %");
+  check("hole compensation is per side", p.text("r_hole"), "+0.200 mm");
+  check("Z not measured", p.text("r_z"), "—");
+  // oversize part -> scale below 100
+  p.set("mx", 100.6).set("my", 100.5);
+  check("oversize X", p.text("r_x"), "99.40 %");
+});
+
+group("layer-height-calculator", () => {
+  const p = load("layer-height-calculator");
+  check("full step 0.04 mm", p.text("r_full"), "40.0 µm");
+  // 0.15 / 0.04 = 3.75 -> repeats every 4 layers
+  check("0.15 mm repeat period", p.text("r_period"), "every 4 layers");
+  check("0.15 in full steps", p.text("r_steps"), "3.750");
+  // a magic height has no repeat and no downside
+  p.set("check", 0.2);
+  check("0.20 mm is on full steps", p.text("r_period"), "none");
+  check("verdict for magic height", p.text("r_verdict"), "No downside");
+  // honest verdict on modern drivers
+  p.set("check", 0.15).set("driver", "modern");
+  check("modern driver verdict", p.text("r_verdict"), "Doesn't matter");
+  p.set("driver", "legacy");
+  check("legacy driver verdict", p.text("r_verdict"), /Worth choosing/);
+  // fine-lead Z: full step 0.01
+  p.set("preset", "2,200,16,1");
+  check("T8x2 full step", p.text("r_full"), "10.0 µm");
+});
+
+group("max-volumetric-speed-calculator", () => {
+  const p = load("max-volumetric-speed-calculator");
+  check("flow at defaults", p.text("r_flow"), "12.2 mm³/s");
+  check("max speed", p.text("r_max"), "184 mm/s");
+  check("verdict comfortable", p.text("r_verdict"), /81% of the hotend limit/);
+  // exceeding the limit must flag
+  p.set("speed", 300);
+  check("over limit flagged", p.text("r_verdict"), /the slicer will cap this/);
+});
+
+group("belt-tension-calculator", () => {
+  const p = load("belt-tension-calculator");
+  // T = 4 L^2 f^2 mu = 4 * 0.15^2 * 110^2 * 0.008
+  check("110 Hz at 150 mm", p.text("r_t"), "8.7 N");
+  check("in range note", p.text("r_ts"), /within the usual 5–15 N range/);
+  // same tension over a 200 mm span
+  p.set("span", 200);
+  check("110 Hz@150 -> 200 mm span", p.text("r_conv"), "82.5 Hz");
+});
+
+group("temp-tower-generator", () => {
+  const p = load("temp-tower-generator");
+  check("6 sections, 60 mm", p.text("r_summary"), /6 sections · 60 mm tall · 230 → 205 °C/);
+  check("layer count", p.text("r_detail"), /300 layers/);
+  p.pick("test_rdist");
+  check("retraction mode relabels", p.text("r_summary"), /0\.2 → 1\.2 mm/);
+  // a gap too wide for the bed must warn
+  p.pick("test_temp").set("gap", 210);
+  check("oversize footprint warns", p.hidden("warn"), false);
+});
+
+/* -------------------------------------------------------------- filament */
+
+group("filament-remaining-calculator", () => {
+  const p = load("filament-remaining-calculator");
+  check("640 - 220 tare", p.text("r_g"), "420 g");
+  check("length left", p.text("r_m"), "140.8 m");
+  check("percent of a kilo", p.text("r_pct"), "42% of a 1 kg spool");
+  // enough for the print?
+  p.set("need", 300);
+  check("enough filament", p.text("r_fit"), "Yes");
+  p.set("need", 500);
+  check("not enough", p.text("r_fit"), "No");
+  check("shortfall stated", p.text("r_fits"), /short by 80 g/);
+  // tare heavier than the spool is a user error, and must say so
+  p.set("need", "").set("gross", 100);
+  check("tare too heavy warns", p.hidden("warn"), false);
+  check("never negative", p.text("r_g"), "0 g");
+});
+
+group("filament-length-weight-calculator", () => {
+  const p = load("filament-length-weight-calculator");
+  check("100 g PLA -> meters", p.text("r_m"), "33.53 m");
+  check("100 g PLA -> volume", p.text("r_v"), "80.65 cm³");
+  check("g per meter", p.text("r_gpm"), "2.983 g/m");
+  p.set("known", "m").set("val", 100);
+  check("100 m PLA -> grams", p.text("r_g"), "298.3 g");
+  p.set("known", "v").set("val", 100);
+  check("100 cm³ PLA -> grams", p.text("r_g"), "124 g");
+  // 2.85 mm is 2.65x the cross-section
+  p.set("known", "g").set("val", 1000).set("dia", "2.85");
+  check("1 kg of 2.85 mm PLA", p.text("r_m"), /126\.\d+ m/);
+});
+
+group("3d-model-scale-calculator", () => {
+  const p = load("3d-model-scale-calculator");
+  check("75% scale dims", p.text("r_dims"), "90 × 60 × 112.5 mm");
+  check("volume is cubic", p.text("r_vol"), "42.2 %");
+  // scale to a target Z
+  p.pick("mode_target").set("taxis", "z").set("tval", 100);
+  check("scale to 100 mm tall", p.text("r_scale"), "66.67 %");
+  // inch/mm mixup detection
+  p.pick("mode_pct").set("pct", 2540);
+  check("inch->mm factor flagged", p.text("r_scales"), /inches → mm fix/);
+  // fit mode
+  p.pick("mode_fit").set("printer", "220,220,250").set("margin", 5);
+  check("fits after scaling down", p.text("r_fit"), /Yes/);
+});
+
+group("print-time-estimator", () => {
+  const p = load("print-time-estimator");
+  check("time estimate", p.text("r_time"), "0h 46m");
+  check("range given", p.text("r_range"), /likely 0h 3\dm – 1h 0\dm/);
+  check("filament weight", p.text("r_g"), "23 g");
+  // halving layer height should roughly double the time
+  const before = p.text("r_time");
+  p.set("lh", 0.1);
+  check("finer layers take longer", p.text("r_time") !== before, true);
+});
+
+/* ------------------------------------------------------- cross-cutting */
+
+group("shared behaviour", () => {
+  const p = load("filament-cost-calculator");
+  // blank inputs must never produce NaN or Infinity in the output
+  ["price", "spool", "used", "waste", "fail"].forEach(id => p.set(id, ""));
+  ["r_cost", "r_adj", "r_perg", "r_perm"].forEach(id => {
+    check(`blank inputs -> no NaN in #${id}`, /NaN|Infinity|undefined/.test(p.text(id)), false);
+  });
+  // negatives must not crash
+  p.set("price", -5).set("spool", 1000).set("used", 50);
+  check("negative price does not crash", /NaN|Infinity/.test(p.text("r_cost")), false);
+});
+
+/* ------------------------------------------------------------------ done */
+
+console.log("");
+if (failed) {
+  console.log(`  ${failed} failing check(s):\n`);
+  failures.forEach(f => console.log("    ✗ " + f + "\n"));
+  console.log(`  ${passed} passed, ${failed} failed`);
+  process.exit(1);
+}
+console.log(`  ${passed} checks passed across all calculators`);
