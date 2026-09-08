@@ -244,12 +244,46 @@ group("shrinkage-compensation-calculator", () => {
   const p = load("shrinkage-compensation-calculator");
   check("X scale", p.text("r_x"), "100.60 %");
   check("Y scale", p.text("r_y"), "100.50 %");
-  check("XY average", p.text("r_xy"), "100.55 %");
-  check("hole compensation is per side", p.text("r_hole"), "+0.200 mm");
+  check("XY scale factor", p.text("r_xy"), "100.55 %");
   check("Z not measured", p.text("r_z"), "—");
-  // oversize part -> scale below 100
+
+  // The two numbers are reciprocals and must never be confused: Orca wants the
+  // measured percentage, everyone else wants the scale factor.
+  check("measured percentage", p.text("r_shrinkpct"), "99.45 %");
+  check("orca gets the measured percentage", p.text("r_value"), "99.45 %");
+  check("orca field named", p.text("r_fieldlabel"), "Shrinkage (XY)");
+  check("orca warned off the scale factor", p.text("note"), /Do not type 100\.55/);
+
+  p.set("slicer", "prusa");
+  check("prusa gets the scale factor", p.text("r_value"), "100.55 %");
+  check("prusa has no shrinkage field", p.text("r_fieldlabel"), "Scale");
+  // PrusaSlicer's XY size compensation moves every contour, so the sign flips
+  // and it must warn about the side effect
+  check("prusa hole value inverted", p.text("r_hole"), "-0.200 mm");
+  check("prusa side effect stated", p.text("r_holes"), /also changes outer dimensions/);
+
+  p.set("slicer", "cura");
+  check("cura gets the scale factor", p.text("r_value"), "100.55 %");
+  check("cura hole field", p.text("r_holelabel"), "Hole Horizontal Expansion");
+  check("cura hole value", p.text("r_hole"), "+0.200 mm");
+
+  p.set("slicer", "orca");
+  // hole compensation is a radius, so half the diameter error
+  check("hole compensation is per side", p.text("r_hole"), "+0.200 mm");
+
+  // oversize part -> scale below 100, measured percentage above
   p.set("mx", 100.6).set("my", 100.5);
   check("oversize X", p.text("r_x"), "99.40 %");
+  check("oversize inverts both", p.text("r_shrinkpct"), "100.55 %");
+  p.set("mx", 99.4).set("my", 99.5);
+
+  // X/Y disagreement is mechanical, not material - must warn
+  p.set("my", 100.4);
+  check("X/Y mismatch warns", p.hidden("warn"), false);
+  p.set("my", 99.5);
+  // implausibly large correction warns
+  p.set("mx", 90).set("my", 90);
+  check("absurd correction warns", p.hidden("warn"), false);
 });
 
 group("layer-height-calculator", () => {
@@ -335,6 +369,24 @@ group("max-volumetric-speed-calculator", () => {
   // exceeding the limit must flag
   p.set("speed", 300);
   check("over limit flagged", p.text("r_verdict"), /the slicer will cap this/);
+  p.set("speed", 150);
+
+  // derated figure for the slicer - bench tests read high
+  check("10% margin off 15", p.text("r_safe"), "13.5 mm³/s");
+  check("margin explained", p.text("r_safes"), /10% below your measured 15/);
+  p.set("derate", 0);
+  check("no margin", p.text("r_safe"), "15.0 mm³/s");
+  p.set("derate", 10);
+
+  // Ellis-style test commands: feed speed = flow / filament cross-section.
+  // 1.75 mm area = 2.4053 mm^2, so 10 mm3/s = 4.157 mm/s = F249
+  const gc = p.text("testgc");
+  check("test commands generated", gc, /M83/);
+  check("10 mm3\/s line", gc, /G1 E100 F249 {3}; 10 mm³\/s/);
+  check("filament feed rate shown", gc, /4\.2 mm\/s of filament/);
+  // 2.85 mm filament needs a much lower feed rate for the same flow
+  p.set("fdia", "2.85");
+  check("2.85 mm rescales the test", p.text("testgc"), /G1 E100 F94 {3}; 10 mm³\/s/);
 });
 
 group("belt-tension-calculator", () => {
@@ -345,6 +397,18 @@ group("belt-tension-calculator", () => {
   // same tension over a 200 mm span
   p.set("span", 200);
   check("110 Hz@150 -> 200 mm span", p.text("r_conv"), "82.5 Hz");
+  p.set("span", 150);
+
+  // CoreXY belt matching: relative tension matters more than the absolute value
+  check("no second belt yet", p.text("r_match"), "—");
+  p.set("freqb", 110);
+  check("identical belts match", p.text("r_match"), "Matched");
+  p.set("freqb", 111);
+  check("1 Hz apart is fine", p.text("r_match"), "1 Hz apart");
+  check("close enough wording", p.text("r_matchs"), /close enough/);
+  p.set("freqb", 125);
+  check("15 Hz apart flagged", p.text("r_match"), "15 Hz apart");
+  check("skew warning", p.text("r_matchs"), /will skew prints/);
 });
 
 group("temp-tower-generator", () => {
@@ -401,9 +465,23 @@ group("3d-model-scale-calculator", () => {
   // inch/mm mixup detection
   p.pick("mode_pct").set("pct", 2540);
   check("inch->mm factor flagged", p.text("r_scales"), /inches → mm fix/);
+  // scaled height rarely lands on a layer boundary - 112.5 / 0.2 = 562.5
+  p.pick("mode_pct").set("pct", 75).set("lh", 0.2);
+  check("scaled height off a layer", p.text("r_q"), "+100 µm out");
+  check("shows the layer count", p.text("r_qs"), /562\.5 layers/);
+  p.set("pct", 100);
+  check("150 mm at 0.2 is exact", p.text("r_q"), "Exact");
+  check("layer count exact", p.text("r_qs"), /750 layers exactly/);
+
   // fit mode
   p.pick("mode_fit").set("printer", "220,220,250").set("margin", 5);
   check("fits after scaling down", p.text("r_fit"), /Yes/);
+
+  // a part too wide square-on can still go corner to corner.
+  // Must be out of fit mode, where the scale is chosen so it always fits.
+  p.pick("mode_pct").set("pct", 100).set("x", 260).set("y", 60).set("z", 100);
+  check("diagonal placement spotted", p.text("r_fit"), /rotated/);
+  check("diagonal explained", p.text("r_fits"), /bed diagonal is 297 mm/);
 });
 
 group("print-time-estimator", () => {
@@ -411,6 +489,15 @@ group("print-time-estimator", () => {
   check("time estimate", p.text("r_time"), "0h 46m");
   check("range given", p.text("r_range"), /likely 0h 3\dm – 1h 0\dm/);
   check("filament weight", p.text("r_g"), "23 g");
+  // if a sliced file exists, read the slicer's real answer instead of estimating
+  p.set("gcode", "; filament used [g] = 23.4\n; estimated printing time (normal mode) = 46m 12s\n");
+  p.doc.getElementById("readgc").dispatchEvent({ type: "click" });
+  check("reads the slicer's figures", p.text("gcstatus"), /Your slicer says 0h 46m and 23\.4 g/);
+  check("tells you to trust it", p.text("gcstatus"), /use it instead of the estimate/);
+  p.set("gcode", "not gcode at all");
+  p.doc.getElementById("readgc").dispatchEvent({ type: "click" });
+  check("junk handled", p.text("gcstatus"), /Couldn't find/);
+
   // halving layer height should roughly double the time
   const before = p.text("r_time");
   p.set("lh", 0.1);

@@ -6,7 +6,7 @@
   "short": "Ballpark hours and grams from model volume, infill, walls and layer height — before you slice.",
   "category": "filament",
   "order": 40,
-  "updated": "2026-09-07",
+  "updated": "2026-09-08",
   "related": ["3d-print-pricing-calculator", "filament-cost-calculator", "3d-model-scale-calculator", "max-volumetric-speed-calculator"],
   "faq": [
     {"q": "How long does a 3D print take?", "a": "It depends almost entirely on how much plastic is laid down and how fast the printer can lay it. A small 20 g keychain takes 30–60 minutes; a 100 g figurine 4–10 hours; a 500 g helmet a day or more. Halving layer height roughly doubles the time; a fast CoreXY printer is 2–3× quicker than a stock bedslinger for the same part."},
@@ -17,6 +17,18 @@
   ]
 }
 <form id="f" class="calc-form" novalidate>
+  <fieldset class="group">
+    <legend>Already sliced it? Use the real numbers</legend>
+    <div class="field">
+      <label for="gcode">Paste the G-code header</label>
+      <textarea id="gcode" placeholder="; filament used [g] = 23.4&#10;; estimated printing time (normal mode) = 46m 12s"></textarea>
+      <p class="hint">If you have sliced the model, the slicer already knows. This reads its answer so you can skip the estimate entirely.</p>
+    </div>
+    <div class="actions" style="margin-top:10px">
+      <button type="button" class="btn" id="readgc">Read G-code</button>
+      <span id="gcstatus" class="hint" style="margin:0"></span>
+    </div>
+  </fieldset>
   <div class="fields">
     <div class="field"><label for="vol">Model volume</label><div class="inwrap"><input type="number" id="vol" value="60" min="0.01" step="any" inputmode="decimal"><span class="unit">cm³</span></div><p class="hint">From the slicer's object info or CAD.</p></div>
     <div class="field"><label for="area">Surface area (optional)</label><div class="inwrap"><input type="number" id="area" value="" placeholder="estimated if blank" min="0" step="any" inputmode="decimal"><span class="unit">cm²</span></div></div>
@@ -71,6 +83,15 @@
     LC.show("costbox", hasP);
     if (hasP) LC.out("r_cost", LC.money(grams / 1000 * ppk));
   }
+  LC.el("readgc").addEventListener("click", function () {
+    var g = LC.parseGcode(LC.val("gcode")), got = [];
+    if (g.hours != null) got.push(LC.hours(g.hours));
+    if (g.grams != null) got.push(LC.fmt(g.grams, 1) + " g");
+    LC.out("gcstatus", got.length
+      ? "Your slicer says " + got.join(" and ") + ". That is the real figure — use it instead of the estimate below."
+      : "Couldn't find a time or weight in that. Paste the comment lines from the top of the file.");
+  });
+
   LC.currencyPicker("cur");
   LC.bind("f", calc);
 })();
@@ -93,6 +114,10 @@
   <li>With overhead: 2,056 × 1.35 = 2,776 s ≈ <strong>46 minutes</strong>, likely 35 min – 1 h</li>
 </ul>
 </div>
+
+<h2>If you have already sliced it, don't estimate</h2>
+<p>The slicer knows the real geometry, your acceleration limits, the speed for every feature type and how much of the run is travel. Nothing on this page can beat that. If a sliced file exists, paste its header into the box at the top and the page reads the slicer's own figures straight out of the comments &mdash; it is there so you stop guessing when you don't have to.</p>
+<p>The estimate below is for the case where no file exists yet &mdash; quoting a job from a photograph, deciding whether something fits in an evening, or sizing a batch before you commit to modelling it.</p>
 
 <h2>What moves the number most</h2>
 <ul>

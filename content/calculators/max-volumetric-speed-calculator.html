@@ -6,7 +6,7 @@
   "short": "Flow in mm³/s from your settings, and the fastest speed your hotend can sustain per layer height.",
   "category": "calibration",
   "order": 50,
-  "updated": "2026-09-07",
+  "updated": "2026-09-08",
   "related": ["layer-height-calculator", "print-time-estimator", "flow-rate-calculator", "temp-tower-generator"],
   "faq": [
     {"q": "How do I calculate volumetric flow rate?", "a": "Flow (mm³/s) = layer height × line width × print speed, with a small correction for the rounded edges of the extrusion. At 0.2 mm layers, 0.45 mm lines and 100 mm/s that's about 8.6 mm³/s. If your hotend tops out at 12 mm³/s, you can't usefully go faster than about 140 mm/s at those settings."},
@@ -39,13 +39,23 @@
       <p class="hint">Typical figures for PLA; PETG is ~25% lower, TPU much lower.</p>
     </div>
     <div class="field"><label for="limit">Hotend max flow</label><div class="inwrap"><input type="number" id="limit" value="15" min="0.1" step="0.5" inputmode="decimal"><span class="unit">mm³/s</span></div></div>
+    <div class="field"><label for="fdia">Filament diameter</label><select id="fdia"><option value="1.75" selected>1.75 mm</option><option value="2.85">2.85 mm</option></select><p class="hint">For the test commands below.</p></div>
+    <div class="field"><label for="derate">Safety margin</label><div class="inwrap"><input type="number" id="derate" value="10" min="0" max="50" step="5" inputmode="decimal"><span class="unit">%</span></div><p class="hint">Bench tests read high. Ellis: real-world flow is a bit less than synthetic results.</p></div>
   </div>
   <div class="results">
     <div class="result primary" id="flowbox"><div class="l">Flow at these settings</div><div class="v" id="r_flow">—</div><div class="s" id="r_verdict"></div></div>
     <div class="result"><div class="l">Max speed at this layer height</div><div class="v" id="r_max">—</div><div class="s">before hitting the hotend limit</div></div>
     <div class="result"><div class="l">Line width range for nozzle</div><div class="v" id="r_lw">—</div><div class="s">100–125% of nozzle diameter</div></div>
     <div class="result"><div class="l">Layer height range</div><div class="v" id="r_lh">—</div><div class="s">25–75% of nozzle diameter</div></div>
+    <div class="result"><div class="l">Set in your slicer</div><div class="v" id="r_safe">—</div><div class="s" id="r_safes"></div></div>
   </div>
+  <fieldset class="group">
+    <legend>Measure your own limit</legend>
+    <p class="hint" style="margin:0 0 10px">Ellis' method: mark 100 mm of filament, extrude it at rising speeds with the hotend at printing temperature, and find the speed at which less than 100 mm actually goes in. These are the commands for your filament diameter.</p>
+    <pre class="gcode" id="testgc"></pre>
+    <div class="actions"><button type="button" class="btn" id="copytest">Copy test commands</button></div>
+    <div class="note">Set <code>max_extrude_only_distance: 101</code> or higher in printer.cfg first if you are on Klipper, or the moves will be rejected. Extrude with no filament path obstruction and watch for the extruder skipping — that is the limit, and it is usually the hotend rather than the motor.</div>
+  </fieldset>
   <div class="table-wrap breakdown"><table>
     <thead><tr><th>Layer height</th><th>Flow at your speed</th><th>Max speed at hotend limit</th></tr></thead>
     <tbody id="rows"></tbody>
@@ -54,7 +64,9 @@
 </form>
 <script>
 (function () {
+  var testGcode = "";
   LC.el("preset").addEventListener("change", function () { if (this.value) LC.el("limit").value = this.value; });
+  LC.copyButton("copytest", function () { return testGcode; });
   function area(lh, lw) { return lw * lh - lh * lh * (1 - Math.PI / 4); }   // stadium cross-section, as slicers use
   function calc() {
     var noz = LC.num("nozzle"), lh = LC.num("lh"), lw = LC.num("lw"), sp = LC.num("speed"), lim = LC.num("limit");
@@ -77,6 +89,31 @@
       rows.push("<tr><td>" + h + " mm" + mark + "</td><td" + (f > lim ? ' class="bad"' : "") + ">" + f.toFixed(1) + " mm³/s</td><td>" + LC.fmt(m, 0) + " mm/s</td></tr>");
     });
     LC.html("rows", rows.join(""));
+
+    // Derated figure to actually put in the slicer. Bench tests over-read because
+    // a real print pushes melt through a restriction rather than into free air.
+    var derate = Math.min(50, Math.max(0, LC.num("derate") || 0));
+    var safe = lim * (1 - derate / 100);
+    LC.out("r_safe", isFinite(safe) ? safe.toFixed(1) + " mm³/s" : "—");
+    LC.out("r_safes", derate > 0
+      ? LC.fmt(derate, 0) + "% below your measured " + LC.fmt(lim, 1) + " mm³/s"
+      : "no margin applied — bench figures usually read high");
+
+    // Ellis' extrude-only test, converted to commands for this filament.
+    // Filament feed speed (mm/s) = target flow / filament cross-section.
+    var fd = parseFloat(LC.val("fdia")), fa = Math.PI * Math.pow(fd / 2, 2);
+    var lines = ["; Ellis-style max flow test for " + fd + " mm filament",
+                 "; heat the hotend to printing temperature first",
+                 "M83                  ; relative extrusion"];
+    var targets = [5, 8, 10, 12, 15, 18, 21, 25, 30, 35, 40];
+    targets.forEach(function (q) {
+      if (q > lim * 2.5) return;
+      var mmps = q / fa, f = Math.round(mmps * 60);
+      lines.push("G1 E100 F" + f + "   ; " + q + " mm³/s  (" + mmps.toFixed(1) + " mm/s of filament)");
+    });
+    lines.push("; the last line where a full 100 mm went in is your max flow");
+    testGcode = lines.join("\n");
+    LC.out("testgc", testGcode);
   }
   LC.bind("f", calc);
 })();

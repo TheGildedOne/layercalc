@@ -1,19 +1,20 @@
 {
   "title": "Shrinkage Compensation Calculator",
-  "page_title": "3D Print Shrinkage & Hole Compensation Calculator",
-  "description": "Measure a test print and get the XYZ scale factor that compensates for shrinkage, plus the XY hole compensation for PrusaSlicer, Orca, Bambu Studio and Cura.",
-  "lede": "Print a calibration part, measure it, and get the scale percentage to enter per axis in your slicer or filament profile — plus the hole compensation offset that makes bolts and bearings actually fit.",
-  "short": "Per-axis scale factor from a measured test print, plus XY hole compensation for your slicer.",
+  "page_title": "Shrinkage & Hole Compensation – The Right Value per Slicer",
+  "description": "Measure a test print and get the exact value for your slicer — Orca and Bambu want the measured percentage, PrusaSlicer and Cura the scale. Both are given.",
+  "lede": "Measure a test print and get the number to type in — but the right one for your slicer. OrcaSlicer and Bambu Studio want the measured percentage; PrusaSlicer and Cura want the scale factor. They are reciprocals, and entering one where the other belongs doubles the error instead of fixing it.",
+  "short": "Per-axis scale and the exact field value for each slicer, plus XY hole compensation.",
   "category": "calibration",
   "order": 30,
-  "updated": "2026-09-07",
+  "updated": "2026-09-08",
   "related": ["flow-rate-calculator", "e-steps-calculator", "3d-model-scale-calculator", "filament-settings-reference"],
   "faq": [
-    {"q": "How much do 3D prints shrink?", "a": "It depends on the material. PLA shrinks about 0.2–0.5%, PETG 0.3–0.8%, ABS 0.8–1.5%, ASA 0.5–0.8%, nylon 1–2% and polypropylene 1.5–2.5%. Carbon-fiber filled versions shrink much less. A 100 mm ABS part therefore comes out roughly 99 mm, and the fix is to scale the model up by about 1%."},
-    {"q": "How do I calculate the shrinkage compensation scale?", "a": "Scale factor = designed size ÷ measured size. If a 100 mm test cube measures 99.2 mm, the scale is 100 ÷ 99.2 = 1.0081, or 100.81%. Enter that as the scale in the slicer (or as filament shrinkage compensation in OrcaSlicer and Bambu Studio) and the next print lands at 100 mm."},
-    {"q": "Why are holes too small even after scaling?", "a": "Holes come out small for a different reason than shrinkage: the extruded line bulges inward on a concave curve and the slicer approximates arcs as polygons. Scaling the whole part doesn't fix it. Slicers have a separate hole compensation (XY hole compensation in Orca/Bambu, XY size compensation in PrusaSlicer, Hole Horizontal Expansion in Cura) that grows only the holes."},
-    {"q": "Is hole compensation per side or per diameter?", "a": "Per side, in every mainstream slicer: the value is how far the hole's contour is pushed outward, so the diameter grows by twice that. If a 10 mm hole measures 9.6 mm, the diameter is 0.4 mm short and the compensation is 0.2 mm. The calculator gives both numbers."},
-    {"q": "Should I scale X, Y and Z differently?", "a": "Usually X and Y together and Z on its own. XY shrinkage is a material property; Z is affected by the first-layer squish and layer height rounding, and often needs no correction at all. Measure all three, but only apply a Z scale if the error is consistent across different heights."}
+    {"q": "What value do I enter in OrcaSlicer's shrinkage field?", "a": "The measured percentage, not the scale-up factor. Orca's own documentation says: 'Enter the shrinkage percentage that the filament will get after cooling (94% if you measure 94mm instead of 100mm).' So a 100 mm part measuring 99.4 mm means you enter 99.4, and Orca scales the model up for you. Entering 100.6 there — the scale factor — would shrink the part further and double your error. Bambu Studio's field behaves the same way."},
+    {"q": "Why do different slicers want different numbers?", "a": "Because they ask different questions. Orca and Bambu ask what the material does ('how much does it shrink?'), so they take the measured percentage and work out the compensation themselves. PrusaSlicer and Cura have no filament shrinkage field, so you scale the model instead and give them the scale factor. The two numbers are reciprocals: 99.4% measured is a 100.60% scale."},
+    {"q": "How much do 3D prints shrink?", "a": "PLA 0.2–0.5%, PETG 0.3–0.8%, ABS 0.8–1.5%, ASA 0.5–0.8%, nylon 1–2%, polypropylene 1.5–2.5%. Carbon-fibre filled versions shrink far less, often under 0.4%, because the fibres restrain the polymer. A 100 mm ABS part typically comes out around 99 mm."},
+    {"q": "Why are holes still too small after I fix the scaling?", "a": "Because holes are wrong for a different reason. Shrinkage is proportional — it scales with size. Hole error is roughly constant in millimetres regardless of diameter, caused by the extruded bead bulging inward on a concave curve and by the slicer approximating a circle as a polygon. A 3 mm and a 30 mm hole both lose about the same 0.2–0.4 mm. That is why slicers have a separate per-side offset that applies only to holes."},
+    {"q": "Is hole compensation a radius or a diameter?", "a": "A radius. OrcaSlicer's XY hole compensation adds or subtracts the value from the radius of each hole, so the diameter changes by twice what you enter. A 10 mm hole measuring 9.6 mm is 0.4 mm short on diameter and 0.2 mm short on radius, so you enter 0.2. The calculator gives both figures so there is no ambiguity."},
+    {"q": "Can I use PrusaSlicer's XY size compensation to fix holes?", "a": "Only with a side effect. PrusaSlicer has no hole-only setting — XY size compensation offsets every contour, so a negative value that enlarges holes also shrinks the outer dimensions by the same amount. If both matter on the same part, model the holes oversize in CAD instead, or use SuperSlicer or OrcaSlicer, which separate hole and contour compensation."}
   ]
 }
 <form id="f" class="calc-form" novalidate>
@@ -25,24 +26,47 @@
       <div class="field"><label for="dy">Y designed</label><div class="inwrap"><input type="number" id="dy" value="100" min="0.01" step="any" inputmode="decimal"><span class="unit">mm</span></div></div>
       <div class="field"><label for="my">Y measured</label><div class="inwrap"><input type="number" id="my" value="99.5" min="0.01" step="any" inputmode="decimal"><span class="unit">mm</span></div></div>
       <div class="field"><label for="dz">Z designed (optional)</label><div class="inwrap"><input type="number" id="dz" value="" placeholder="e.g. 50" min="0.01" step="any" inputmode="decimal"><span class="unit">mm</span></div></div>
-      <div class="field"><label for="mz">Z measured</label><div class="inwrap"><input type="number" id="mz" value="" placeholder="" min="0.01" step="any" inputmode="decimal"><span class="unit">mm</span></div></div>
+      <div class="field"><label for="mz">Z measured</label><div class="inwrap"><input type="number" id="mz" value="" min="0.01" step="any" inputmode="decimal"><span class="unit">mm</span></div></div>
     </div>
   </fieldset>
   <fieldset class="group">
     <legend>Holes (optional)</legend>
     <div class="fields">
       <div class="field"><label for="dh">Hole diameter designed</label><div class="inwrap"><input type="number" id="dh" value="10" min="0.01" step="any" inputmode="decimal"><span class="unit">mm</span></div></div>
-      <div class="field"><label for="mh">Hole diameter measured</label><div class="inwrap"><input type="number" id="mh" value="9.6" min="0.01" step="any" inputmode="decimal"><span class="unit">mm</span></div><p class="hint">Measure after applying the XY scale, ideally.</p></div>
+      <div class="field"><label for="mh">Hole diameter measured</label><div class="inwrap"><input type="number" id="mh" value="9.6" min="0.01" step="any" inputmode="decimal"><span class="unit">mm</span></div><p class="hint">Measure after the XY scale is applied, so you are not correcting the same error twice.</p></div>
     </div>
   </fieldset>
-  <div class="results">
-    <div class="result primary"><div class="l">XY scale to apply</div><div class="v" id="r_xy">—</div><div class="s" id="r_xys"></div></div>
-    <div class="result"><div class="l">X scale</div><div class="v" id="r_x">—</div><div class="s" id="r_xs"></div></div>
-    <div class="result"><div class="l">Y scale</div><div class="v" id="r_y">—</div><div class="s" id="r_ys"></div></div>
-    <div class="result"><div class="l">Z scale</div><div class="v" id="r_z">—</div><div class="s" id="r_zs"></div></div>
-    <div class="result"><div class="l">Hole compensation (per side)</div><div class="v" id="r_hole">—</div><div class="s" id="r_holes"></div></div>
-  </div>
-  <div id="note" class="note"></div>
+  <fieldset class="group">
+    <legend>Which slicer?</legend>
+    <div class="fields">
+      <div class="field">
+        <label for="slicer">Slicer</label>
+        <select id="slicer">
+          <option value="orca" selected>OrcaSlicer / Bambu Studio</option>
+          <option value="prusa">PrusaSlicer</option>
+          <option value="super">SuperSlicer</option>
+          <option value="cura">Cura</option>
+          <option value="scale">Just scale the model</option>
+        </select>
+      </div>
+    </div>
+    <div class="results">
+      <div class="result primary"><div class="l" id="r_fieldlabel">Enter this</div><div class="v" id="r_value">—</div><div class="s" id="r_where"></div></div>
+      <div class="result" id="holebox"><div class="l" id="r_holelabel">Hole compensation</div><div class="v" id="r_hole">—</div><div class="s" id="r_holes"></div></div>
+    </div>
+    <div id="note" class="note"></div>
+    <div id="warn" class="warn-box" hidden></div>
+  </fieldset>
+  <fieldset class="group">
+    <legend>All the numbers</legend>
+    <div class="results">
+      <div class="result"><div class="l">XY scale factor</div><div class="v" id="r_xy">—</div><div class="s">for a scale box</div></div>
+      <div class="result"><div class="l">Measured percentage</div><div class="v" id="r_shrinkpct">—</div><div class="s">for Orca / Bambu shrinkage</div></div>
+      <div class="result"><div class="l">X</div><div class="v" id="r_x">—</div><div class="s" id="r_xs"></div></div>
+      <div class="result"><div class="l">Y</div><div class="v" id="r_y">—</div><div class="s" id="r_ys"></div></div>
+      <div class="result"><div class="l">Z</div><div class="v" id="r_z">—</div><div class="s" id="r_zs"></div></div>
+    </div>
+  </fieldset>
   <div class="actions"><button type="button" class="btn-ghost" data-reset>Reset</button></div>
 </form>
 <script>
@@ -54,72 +78,166 @@
     LC.out(sid, (shrink >= 0 ? "shrank " : "grew ") + Math.abs(shrink).toFixed(2) + "% (" + Math.abs(d - m).toFixed(2) + " mm)");
     return scale;
   }
+
   function calc() {
     var sx = axis(LC.num("dx"), LC.num("mx"), "r_x", "r_xs");
     var sy = axis(LC.num("dy"), LC.num("my"), "r_y", "r_ys");
     var sz = axis(LC.num("dz"), LC.num("mz"), "r_z", "r_zs");
     var xy = isFinite(sx) && isFinite(sy) ? (sx + sy) / 2 : isFinite(sx) ? sx : sy;
-    LC.out("r_xy", isFinite(xy) ? (xy * 100).toFixed(2) + " %" : "—");
-    var diff = isFinite(sx) && isFinite(sy) ? Math.abs(sx - sy) * 100 : 0;
-    LC.out("r_xys", isFinite(xy) ? (diff > 0.15 ? "X and Y differ by " + diff.toFixed(2) + "% — consider separate X/Y scales or check belts" : "average of X and Y · Orca/Bambu shrinkage compensation: " + (xy * 100).toFixed(2) + "%") : "");
+
+    // The two numbers people mix up. They are reciprocals.
+    //   scale factor      = designed / measured   -> a scale box, or CAD
+    //   measured percent  = measured / designed   -> Orca/Bambu filament shrinkage
+    var scalePct = xy * 100, measuredPct = 100 / xy;
+    LC.out("r_xy", isFinite(xy) ? scalePct.toFixed(2) + " %" : "—");
+    LC.out("r_shrinkpct", isFinite(xy) ? measuredPct.toFixed(2) + " %" : "—");
+
     var dh = LC.num("dh"), mh = LC.num("mh");
-    if (dh > 0 && mh > 0) {
-      var perSide = (dh - mh) / 2;
-      LC.out("r_hole", (perSide >= 0 ? "+" : "") + perSide.toFixed(3) + " mm");
-      LC.out("r_holes", "diameter is " + Math.abs(dh - mh).toFixed(2) + " mm " + (dh > mh ? "under" : "over") + "size · or design holes " + Math.abs(dh - mh).toFixed(2) + " mm " + (dh > mh ? "larger" : "smaller"));
-    } else { LC.out("r_hole", "—"); LC.out("r_holes", "not measured"); }
-    LC.html("note", "Enter the XY scale as <strong>" + (isFinite(xy) ? (xy * 100).toFixed(2) : "…") + "%</strong> in the slicer's scale box, or as the filament's shrinkage compensation in OrcaSlicer / Bambu Studio (Filament → Advanced → Shrinkage). Enter the hole value in <em>XY hole compensation</em> (Orca / Bambu), <em>XY size compensation</em> (PrusaSlicer, applies to all contours) or <em>Hole Horizontal Expansion</em> (Cura).");
+    var perSide = (dh > 0 && mh > 0) ? (dh - mh) / 2 : NaN;
+    var hasHole = isFinite(perSide);
+
+    var slicer = LC.val("slicer"), label, value, where, detail, holeLabel, holeVal, holeSub;
+    var v = isFinite(xy) ? measuredPct.toFixed(2) : "—";
+    var s = isFinite(xy) ? scalePct.toFixed(2) : "—";
+
+    if (slicer === "orca") {
+      label = "Shrinkage (XY)";
+      value = v + " %";
+      where = "Filament → Advanced → Shrinkage (XY)";
+      detail = "Orca and Bambu ask what the <em>material</em> does, so this field takes the <strong>measured</strong> percentage — their documentation gives the example &ldquo;94% if you measure 94mm instead of 100mm&rdquo;. The slicer works out the scale-up itself. Do not type " + s + "% here: that is the scale factor, and entering it would shrink the part further.";
+      holeLabel = "XY hole compensation";
+      holeVal = hasHole ? (perSide >= 0 ? "+" : "") + perSide.toFixed(3) + " mm" : "—";
+      holeSub = "Quality → Precision → XY hole compensation. Applied to the hole radius.";
+    } else if (slicer === "prusa") {
+      label = "Scale";
+      value = s + " %";
+      where = "Object scale in the right-hand panel, or your CAD";
+      detail = "PrusaSlicer has no filament shrinkage field, so you scale the model and give it the <strong>scale factor</strong>. Its <em>XY size compensation</em> is a different thing — a fixed offset applied to <em>every</em> contour, so a negative value that opens holes up also shrinks the outer dimensions by the same amount. There is no hole-only setting.";
+      holeLabel = "XY size compensation";
+      holeVal = hasHole ? (-perSide >= 0 ? "+" : "") + (-perSide).toFixed(3) + " mm" : "—";
+      holeSub = hasHole ? "Print Settings → Advanced. Warning: this also changes outer dimensions by " + Math.abs(perSide).toFixed(3) + " mm per side." : "";
+    } else if (slicer === "super") {
+      label = "Scale";
+      value = s + " %";
+      where = "Object scale in the right-hand panel";
+      detail = "SuperSlicer has no filament shrinkage field, so scale the model by the <strong>scale factor</strong>. Unlike PrusaSlicer it does separate hole and contour compensation, so holes can be fixed without touching outer dimensions.";
+      holeLabel = "Hole XY compensation";
+      holeVal = hasHole ? (perSide >= 0 ? "+" : "") + perSide.toFixed(3) + " mm" : "—";
+      holeSub = "Print Settings → Advanced → Hole XY compensation.";
+    } else if (slicer === "cura") {
+      label = "Scale";
+      value = s + " %";
+      where = "Object scale in the left-hand panel";
+      detail = "Cura has no filament shrinkage field, so scale the model by the <strong>scale factor</strong>. <em>Hole Horizontal Expansion</em> grows only the holes, which is what the figure on the right is for; <em>Horizontal Expansion</em> would move every contour.";
+      holeLabel = "Hole Horizontal Expansion";
+      holeVal = hasHole ? (perSide >= 0 ? "+" : "") + perSide.toFixed(3) + " mm" : "—";
+      holeSub = "Shell settings. Applied to the hole radius.";
+    } else {
+      label = "Scale the model to";
+      value = s + " %";
+      where = "In your slicer's scale box, or in CAD before exporting";
+      detail = "Scaling the model works in any slicer. The downside is that it travels with the object rather than the filament, so you have to remember to apply it every time you print that material.";
+      holeLabel = "Design holes larger by";
+      holeVal = hasHole ? (dh - mh >= 0 ? "+" : "") + (dh - mh).toFixed(3) + " mm" : "—";
+      holeSub = "On the diameter, in CAD.";
+    }
+
+    LC.out("r_fieldlabel", label);
+    LC.out("r_value", value);
+    LC.out("r_where", where);
+    LC.html("note", detail);
+    LC.out("r_holelabel", holeLabel);
+    LC.out("r_hole", holeVal);
+    LC.out("r_holes", hasHole ? holeSub : "no hole measured");
+    LC.setClass("holebox", "result" + (hasHole ? "" : ""));
+
+    var msgs = [];
+    if (isFinite(sx) && isFinite(sy) && Math.abs(sx - sy) * 100 > 0.15) {
+      msgs.push("X and Y differ by " + (Math.abs(sx - sy) * 100).toFixed(2) + "%. Material shrinkage is the same in both directions, so a gap this size usually means belt tension, frame squareness or a skewed axis rather than shrinkage. Fix that first, or the compensation will bake the skew in.");
+    }
+    if (isFinite(xy) && Math.abs(scalePct - 100) > 3) {
+      msgs.push("A " + Math.abs(scalePct - 100).toFixed(1) + "% correction is far larger than any common filament shrinks. Check the measurement and that the part is fully cool — and check flow, since over-extrusion inflates outer dimensions.");
+    }
+    if (hasHole && Math.abs(perSide) > 0.5) {
+      msgs.push("A hole offset over 0.5 mm per side is unusually large. Check that you measured the hole and not a slot, and that the print is not badly over-extruded.");
+    }
+    LC.show("warn", msgs.length > 0);
+    LC.html("warn", msgs.join("<br><br>"));
   }
   LC.bind("f", calc);
 })();
 </script>
 <!--ARTICLE-->
-<h2>The formulas</h2>
-<div class="formula">scale factor (per axis) = designed ÷ measured<br>shrinkage % = (designed − measured) ÷ designed × 100<br>hole compensation (per side) = (designed hole − measured hole) ÷ 2</div>
-<p>Scale and shrinkage look like the same number but aren't quite: 1% shrinkage needs a 1.0101 scale to undo it. The calculator uses the exact ratio so it's right for any amount.</p>
+<h2>The mistake this page exists to prevent</h2>
+<p>There are two numbers, they are reciprocals of each other, and different slicers want different ones. Entering the wrong one does not do nothing &mdash; it moves the part the wrong way and roughly doubles your error.</p>
+<div class="formula">scale factor     = designed ÷ measured   →  100 ÷ 99.4 = 100.60%<br>measured percent = measured ÷ designed   →  99.4 ÷ 100 = 99.40%</div>
+<p><strong>OrcaSlicer and Bambu Studio want the measured percentage.</strong> Their field asks what the material does, and the documentation is explicit: <em>"Enter the shrinkage percentage that the filament will get after cooling (94% if you measure 94mm instead of 100mm). The part will be scaled in XY to compensate."</em> You give it 99.4 and it does the rest.</p>
+<p><strong>PrusaSlicer, SuperSlicer and Cura want the scale factor</strong>, because none of them has a filament shrinkage field. You scale the model to 100.60% and they print it larger.</p>
+<p>Pick your slicer above and the page gives you the one number for the one field. Both are shown lower down for reference.</p>
 
 <div class="example">
 <h3>Worked example</h3>
-<p>A 100 mm ASA calibration square measures 99.4 mm in X and 99.5 mm in Y. Its 10 mm hole measures 9.6 mm.</p>
+<p>A 100 mm ASA square measures 99.4 mm in X and 99.5 mm in Y. Its 10 mm hole measures 9.6 mm.</p>
 <ul>
-  <li>X scale: 100 ÷ 99.4 = <strong>100.60%</strong>; Y scale: 100 ÷ 99.5 = <strong>100.50%</strong>; use <strong>100.55%</strong> for both</li>
-  <li>Hole: (10 − 9.6) ÷ 2 = <strong>0.2 mm</strong> per side of XY hole compensation</li>
+  <li>XY average scale: 100 ÷ 99.45 = <strong>100.55%</strong></li>
+  <li>Measured percentage: 99.45 ÷ 100 = <strong>99.45%</strong></li>
+  <li>In OrcaSlicer, Shrinkage (XY) = <strong>99.45</strong></li>
+  <li>In PrusaSlicer, scale the object to <strong>100.55%</strong></li>
+  <li>Hole: (10 &minus; 9.6) ÷ 2 = <strong>0.2 mm</strong> per side of hole compensation</li>
 </ul>
-<p>After applying both, reprint and measure again. Second-pass results are typically within 0.05 mm on a 100 mm part.</p>
+<p>Reprint and measure again. Second-pass results are typically within 0.05 mm on a 100 mm part.</p>
 </div>
 
+<h2>Which field, in which slicer</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Slicer</th><th>Shrinkage field</th><th>Takes</th><th>Hole-only compensation</th></tr></thead>
+<tbody>
+<tr><td>OrcaSlicer</td><td>Filament → Advanced → Shrinkage (XY)</td><td><strong>Measured %</strong> (99.45)</td><td>Yes — XY hole compensation, on the radius</td></tr>
+<tr><td>Bambu Studio</td><td>Filament shrinkage</td><td><strong>Measured %</strong></td><td>Yes — XY hole compensation</td></tr>
+<tr><td>PrusaSlicer</td><td>None — scale the object</td><td><strong>Scale %</strong> (100.55)</td><td>No — XY size compensation moves every contour</td></tr>
+<tr><td>SuperSlicer</td><td>None — scale the object</td><td><strong>Scale %</strong></td><td>Yes — separate hole and contour compensation</td></tr>
+<tr><td>Cura</td><td>None — scale the object</td><td><strong>Scale %</strong></td><td>Yes — Hole Horizontal Expansion</td></tr>
+</tbody></table></div>
+
+<h2>Shrinkage and hole error are different problems</h2>
+<p>It is worth being clear about why these need two separate corrections, because it explains why fixing one never fixes the other.</p>
+<p><strong>Shrinkage is proportional.</strong> The polymer contracts as it cools by a percentage of its size, so a 200 mm part loses twice as many millimetres as a 100 mm one. Two holes 100 mm apart end up 99.4 mm apart. The fix is a scale.</p>
+<p><strong>Hole error is roughly constant.</strong> The extruded bead bulges toward the centre on a concave curve, the slicer approximates a circle as a polygon that sits inside the true circle, and first-layer squish spreads inward. Those errors are measured in millimetres, not percentages &mdash; a 3 mm hole and a 30 mm hole both lose something like 0.2&ndash;0.4 mm of diameter. The fix is a fixed offset applied only to holes.</p>
+<p>This is why you measure the hole <em>after</em> applying the scale. Otherwise the scale has already changed the hole a little and you correct the same error twice.</p>
+
+<h2>A note on PrusaSlicer</h2>
+<p>PrusaSlicer's <em>XY size compensation</em> is often suggested for holes, and it does work &mdash; but it offsets every contour in the layer, not just holes. A negative value large enough to open your holes up will shrink the outer dimensions by exactly the same amount per side. If only the holes matter, that is fine. If both matter on the same part, your options are to model the holes oversize in CAD, or use SuperSlicer or OrcaSlicer, which separate the two.</p>
+
 <h2>Printing a useful test part</h2>
-<p>Bigger is better, because the error you're measuring is a percentage and calipers are absolute. A 20 mm cube shrinking 0.5% is 0.1 mm — within caliper noise. A 100 mm part makes it 0.5 mm, which is unmistakable. Good test parts:</p>
+<p>Bigger is better, because you are measuring a percentage with an absolute instrument. A 20 mm cube shrinking 0.5% is 0.1 mm &mdash; inside caliper noise. A 100 mm part makes it 0.5 mm, which is unmistakable.</p>
 <ul>
-  <li>A <strong>100 × 100 × 10 mm square</strong> with a 10 mm and a 20 mm hole, or Orca's built-in tolerance test.</li>
-  <li>A <strong>150 mm bar</strong> if your bed allows it — the longer, the more precise.</li>
-  <li>For Z, a <strong>50 mm tower</strong> measured with the calipers' depth rod, not the jaws.</li>
+  <li>A <strong>100 × 100 × 10 mm plate</strong> with a 10 mm and a 20 mm hole, or Orca's built-in tolerance test.</li>
+  <li>A <strong>150 mm bar</strong> if the bed allows &mdash; longer is more precise.</li>
+  <li>For Z, a <strong>50 mm tower</strong> measured with the calipers' depth rod rather than the jaws.</li>
 </ul>
-<p>Print it in the material and profile you'll use for real parts, let it cool fully (ABS keeps shrinking for an hour), and measure each dimension in two places. Take the outer dimensions at mid-height to avoid elephant's foot at the base.</p>
+<p>Print in the material and profile you will actually use, let it cool completely (ABS keeps moving for an hour), and measure each dimension at two points, mid-height, to avoid elephant's foot at the base.</p>
 
 <h2>Shrinkage by material</h2>
 <div class="table-wrap"><table>
-<thead><tr><th>Material</th><th>Typical shrinkage</th><th>Starting scale</th><th>Notes</th></tr></thead>
+<thead><tr><th>Material</th><th>Typical shrinkage</th><th>Orca field (measured %)</th><th>Scale %</th></tr></thead>
 <tbody>
-<tr><td>PLA</td><td>0.2 – 0.5%</td><td>100.3%</td><td>Often small enough to ignore for non-fitting parts.</td></tr>
-<tr><td>PETG</td><td>0.3 – 0.8%</td><td>100.5%</td><td>Varies noticeably between brands.</td></tr>
-<tr><td>ABS</td><td>0.8 – 1.5%</td><td>101.0%</td><td>Depends heavily on chamber temperature — measure in your enclosure.</td></tr>
-<tr><td>ASA</td><td>0.5 – 0.8%</td><td>100.6%</td><td>Slightly more stable than ABS.</td></tr>
-<tr><td>Nylon (PA6 / PA12)</td><td>1.0 – 2.0%</td><td>101.5%</td><td>Also absorbs water and grows afterwards; measure dry.</td></tr>
-<tr><td>Polycarbonate</td><td>0.6 – 1.0%</td><td>100.8%</td><td></td></tr>
-<tr><td>PLA-CF / PETG-CF / PA-CF</td><td>0.1 – 0.4%</td><td>100.2%</td><td>Fibers restrain shrinkage — one reason CF filaments hold tolerances.</td></tr>
-<tr><td>Polypropylene</td><td>1.5 – 2.5%</td><td>102.0%</td><td>Warps badly; compensation is only meaningful if the part stays flat.</td></tr>
+<tr><td>PLA</td><td>0.2 – 0.5%</td><td>99.7</td><td>100.3</td></tr>
+<tr><td>PETG</td><td>0.3 – 0.8%</td><td>99.5</td><td>100.5</td></tr>
+<tr><td>ABS</td><td>0.8 – 1.5%</td><td>99.0</td><td>101.0</td></tr>
+<tr><td>ASA</td><td>0.5 – 0.8%</td><td>99.4</td><td>100.6</td></tr>
+<tr><td>Nylon (PA6 / PA12)</td><td>1.0 – 2.0%</td><td>98.5</td><td>101.5</td></tr>
+<tr><td>Polycarbonate</td><td>0.6 – 1.0%</td><td>99.2</td><td>100.8</td></tr>
+<tr><td>PLA-CF / PETG-CF / PA-CF</td><td>0.1 – 0.4%</td><td>99.8</td><td>100.2</td></tr>
+<tr><td>Polypropylene</td><td>1.5 – 2.5%</td><td>98.0</td><td>102.0</td></tr>
 </tbody></table></div>
-<p>These are starting points. Your printer's chamber temperature, part geometry, infill and cooling all move the real figure, which is why the calculator exists.</p>
+<p>Starting points only. Chamber temperature, part geometry, infill and cooling all move the real figure, which is the entire reason to measure rather than look it up.</p>
 
-<h2>Where to enter it</h2>
-<h3>OrcaSlicer and Bambu Studio</h3>
-<p>Filament profile → Advanced → <em>Shrinkage compensation</em> (XY, and Z on recent versions). This is the right place: it travels with the material, so every print in that filament gets it automatically and the model's own scale stays at 100%.</p>
-<h3>PrusaSlicer</h3>
-<p>There's no per-filament shrinkage field, so scale the object (right sidebar, scale %) or set it in a print profile you keep for that material. <em>XY size compensation</em> under Print Settings → Advanced offsets every contour, holes included, by the value in mm.</p>
-<h3>Cura</h3>
-<p>Scale in the object panel. <em>Horizontal Expansion</em> offsets all contours; <em>Hole Horizontal Expansion</em> grows only the holes and is the one to use for the hole value from this page.</p>
+<h2>When X and Y disagree</h2>
+<p>Material shrinkage is the same in both directions. If your X and Y corrections differ by more than about 0.15%, something mechanical is doing it &mdash; belt tension, a skewed frame, or a gantry that is not square. The calculator flags this, because compensating for it bakes the skew into every part you print instead of fixing the printer. The <a href="/belt-tension-calculator/">belt tension calculator</a> is the place to start.</p>
 
-<h2>Why holes are a separate problem</h2>
-<p>Scaling fixes shrinkage, which is uniform. Holes come out small for non-uniform reasons: on a concave curve the extruded bead bulges toward the centre, the slicer's polygon approximation of a circle sits inside the true circle, and the first layer's squish spreads inward. Those errors are roughly constant in millimeters, not a percentage — a 3 mm and a 30 mm hole lose about the same 0.2–0.4 mm of diameter. That's why slicers offer a per-side offset applied to holes only, and why you should measure the hole <em>after</em> the XY scale is in place, so you're not correcting the same error twice.</p>
-<p>If you design your own parts, the alternative is to simply draw holes 0.2–0.4 mm oversize in CAD. Many designers do both: compensate in the slicer for models they download, and design fits in for their own.</p>
+<h2>Sources</h2>
+<ul>
+  <li>OrcaSlicer documentation, <em>Material basic information</em> &mdash; the shrinkage field's definition and its 94 mm example, which is the source of the measured-versus-scale distinction on this page.</li>
+  <li>OrcaSlicer documentation, <em>Quality settings: precision</em> &mdash; XY hole compensation applying to the hole radius, and XY contour compensation being separate.</li>
+  <li>PrusaSlicer documentation for XY size compensation and its whole-contour behaviour.</li>
+</ul>

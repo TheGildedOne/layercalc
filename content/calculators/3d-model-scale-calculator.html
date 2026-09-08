@@ -32,7 +32,7 @@
     <div class="field" data-mode="pct"><label for="pct">Scale</label><div class="inwrap"><input type="number" id="pct" value="75" min="0.01" step="any" inputmode="decimal"><span class="unit">%</span></div></div>
     <div class="field" data-mode="target" hidden><label for="taxis">Axis</label><select id="taxis"><option value="x">X</option><option value="y">Y</option><option value="z" selected>Z</option></select></div>
     <div class="field" data-mode="target" hidden><label for="tval">Should be</label><div class="inwrap"><input type="number" id="tval" value="100" min="0.01" step="any" inputmode="decimal"><span class="unit" id="ut">mm</span></div></div>
-    <div class="field" data-mode="fit" hidden><label for="printer">Printer</label>
+    <div class="field"><label for="printer">Printer</label>
       <select id="printer">
         <option value="220,220,250" selected>Ender 3 / V2 / S1 / V3 SE (220×220×250)</option>
         <option value="220,220,250">Creality K1 / K1C, Sovol SV06, Kobra 2 (220×220×250)</option>
@@ -54,16 +54,18 @@
         <option value="153,87,165">Resin: Elegoo Mars 4 / Photon Mono 4 (153×87×165)</option>
         <option value="custom">Custom</option>
       </select></div>
-    <div class="field" data-mode="fit" hidden><label for="bx">Bed X</label><div class="inwrap"><input type="number" id="bx" value="220" min="1" step="1" inputmode="decimal"><span class="unit">mm</span></div></div>
-    <div class="field" data-mode="fit" hidden><label for="by">Bed Y</label><div class="inwrap"><input type="number" id="by" value="220" min="1" step="1" inputmode="decimal"><span class="unit">mm</span></div></div>
-    <div class="field" data-mode="fit" hidden><label for="bz">Max height</label><div class="inwrap"><input type="number" id="bz" value="250" min="1" step="1" inputmode="decimal"><span class="unit">mm</span></div></div>
-    <div class="field" data-mode="fit" hidden><label for="margin">Margin from bed edges</label><div class="inwrap"><input type="number" id="margin" value="5" min="0" step="1" inputmode="decimal"><span class="unit">mm</span></div><p class="hint">Brim, skirt, clips.</p></div>
+    <div class="field"><label for="bx">Bed X</label><div class="inwrap"><input type="number" id="bx" value="220" min="1" step="1" inputmode="decimal"><span class="unit">mm</span></div></div>
+    <div class="field"><label for="by">Bed Y</label><div class="inwrap"><input type="number" id="by" value="220" min="1" step="1" inputmode="decimal"><span class="unit">mm</span></div></div>
+    <div class="field"><label for="bz">Max height</label><div class="inwrap"><input type="number" id="bz" value="250" min="1" step="1" inputmode="decimal"><span class="unit">mm</span></div></div>
+    <div class="field"><label for="lh">Layer height</label><div class="inwrap"><input type="number" id="lh" value="0.2" min="0.01" step="0.01" inputmode="decimal"><span class="unit">mm</span></div><p class="hint">To check the scaled height still lands on a layer.</p></div>
+    <div class="field"><label for="margin">Margin from bed edges</label><div class="inwrap"><input type="number" id="margin" value="5" min="0" step="1" inputmode="decimal"><span class="unit">mm</span></div><p class="hint">Brim, skirt, clips.</p></div>
   </div>
   <div class="results">
     <div class="result primary"><div class="l">Scale to apply</div><div class="v" id="r_scale">—</div><div class="s" id="r_scales"></div></div>
     <div class="result"><div class="l">New size (X × Y × Z)</div><div class="v" id="r_dims">—</div><div class="s" id="r_dimsalt"></div></div>
     <div class="result"><div class="l">Volume, filament &amp; time</div><div class="v" id="r_vol">—</div><div class="s">of the original</div></div>
     <div class="result" id="fitbox" hidden><div class="l">Fits the bed?</div><div class="v" id="r_fit">—</div><div class="s" id="r_fits"></div></div>
+    <div class="result" id="qbox"><div class="l">Scaled height on a layer boundary?</div><div class="v" id="r_q">—</div><div class="s" id="r_qs"></div></div>
   </div>
   <div class="actions"><button type="button" class="btn-ghost" data-reset>Reset</button></div>
 </form>
@@ -100,7 +102,19 @@
     LC.out("r_dimsalt", inch ? LC.fmt(nx, 1) + " × " + LC.fmt(ny, 1) + " × " + LC.fmt(nz, 1) + " mm" : LC.fmt(nx / 25.4, 2) + " × " + LC.fmt(ny / 25.4, 2) + " × " + LC.fmt(nz / 25.4, 2) + " in");
     var vf = Math.pow(scale, 3);
     LC.out("r_vol", (vf >= 1 ? "× " + LC.fmt(vf, 2) : LC.fmt(vf * 100, 1) + " %"));
-    var showFit = mode === "fit" && isFinite(bx) && isFinite(by) && isFinite(bz);
+    // Scaling almost never leaves a height on a layer boundary, and the error is
+    // up to half a layer on a dimension the user probably cares about.
+    var lh = LC.num("lh");
+    if (isFinite(lh) && lh > 0 && isFinite(nz) && nz > 0) {
+      var qlayers = nz / lh, qwhole = Math.round(qlayers), qprinted = qwhole * lh, qerr = qprinted - nz;
+      var qexact = Math.abs(qerr) < 0.0005;
+      LC.setClass("qbox", "result " + (qexact ? "ok" : Math.abs(qerr) > lh * 0.25 ? "warn" : ""));
+      LC.out("r_q", qexact ? "Exact" : (qerr > 0 ? "+" : "") + (qerr * 1000).toFixed(0) + " µm out");
+      LC.out("r_qs", qexact ? LC.fmt(qwhole, 0) + " layers exactly"
+        : LC.fmt(qlayers, 2) + " layers — prints as " + qprinted.toFixed(3) + " mm");
+    } else { LC.setClass("qbox", "result"); LC.out("r_q", "—"); LC.out("r_qs", "enter a layer height"); }
+
+    var showFit = isFinite(bx) && isFinite(by) && isFinite(bz);
     LC.show("fitbox", showFit);
     if (showFit) {
       var ok = fits(nx, ny, nz), okRot = !(nx <= bx && ny <= by && nz <= bz) && ok;
@@ -108,7 +122,13 @@
       LC.out("r_fit", ok ? (okRot ? "Yes, rotated 90°" : "Yes") : "No");
       var over = [];
       if (!ok) { if (nz > bz) over.push("height " + LC.fmt(nz, 1) + " > " + bz + " mm"); if (Math.min(nx, ny) > Math.min(bx, by) || Math.max(nx, ny) > Math.max(bx, by)) over.push("footprint " + LC.fmt(nx, 0) + " × " + LC.fmt(ny, 0) + " > " + bx + " × " + by + " mm usable"); }
-      LC.out("r_fits", ok ? "usable area " + bx + " × " + by + " × " + bz + " mm" + (mode !== "fit" ? "" : "") : over.join(" · ") + " — max scale " + LC.fmt(Math.min(bx / x, by / y, bz / z, Math.max(bx / y, by / x)) * 100, 1) + "%");
+      var diag = Math.sqrt(bx * bx + by * by);
+      var fitsDiag = !ok && nz <= bz && Math.max(nx, ny) <= diag && Math.min(nx, ny) <= Math.min(bx, by) * 0.9;
+      if (fitsDiag) { LC.out("r_fit", "Yes, rotated ~45°"); LC.setClass("fitbox", "result warn"); }
+      LC.out("r_fits", fitsDiag
+        ? "too wide square-on, but the bed diagonal is " + LC.fmt(diag, 0) + " mm — place it corner to corner"
+        : ok ? "usable area " + bx + " × " + by + " × " + bz + " mm"
+        : over.join(" · ") + " — max scale " + LC.fmt(Math.min(bx / x, by / y, bz / z, Math.max(bx / y, by / x)) * 100, 1) + "%");
     }
   }
   LC.bind("f", calc);

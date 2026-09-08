@@ -39,6 +39,12 @@ Object.defineProperty(Element.prototype, "innerHTML", {
   get: function () { return this._innerHTML; },
   set: function (v) {
     this._innerHTML = String(v);
+    // A real element's textContent reflects whatever innerHTML put in it.
+    this.textContent = this._innerHTML
+      .replace(/<[^>]*>/g, "")
+      .replace(/&nbsp;/g, " ").replace(/&mdash;/g, "—").replace(/&ndash;/g, "–")
+      .replace(/&ldquo;/g, "“").replace(/&rdquo;/g, "”").replace(/&minus;/g, "−")
+      .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
     if (!this._doc) return;
     // drop anything this element injected previously, then register the new markup
     var doc = this._doc, mine = this._injected;

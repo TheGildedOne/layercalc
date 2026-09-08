@@ -6,7 +6,7 @@
   "short": "Belt frequency ⇄ tension for GT2 belts, and convert a documented Hz target to your own span.",
   "category": "calibration",
   "order": 60,
-  "updated": "2026-09-07",
+  "updated": "2026-09-08",
   "related": ["shrinkage-compensation-calculator", "flow-rate-calculator", "layer-height-calculator", "e-steps-calculator"],
   "faq": [
     {"q": "How tight should 3D printer belts be?", "a": "Tight enough that the belt doesn't skip or ring, loose enough not to load the bearings: for 6 mm GT2 belts on desktop printers that's typically 5–15 N of tension. As a frequency, the widely used Voron figure is 110 Hz measured over a 150 mm span, which is about 8–9 N. Your printer's documentation beats any generic number."},
@@ -40,6 +40,13 @@
     </div>
   </fieldset>
   <fieldset class="group">
+    <legend>Match the two belts (CoreXY)</legend>
+    <div class="fields">
+      <div class="field"><label for="freqb">Second belt's frequency</label><div class="inwrap"><input type="number" id="freqb" value="" placeholder="optional" min="1" step="0.5" inputmode="decimal"><span class="unit">Hz</span></div><p class="hint">Measured over the same span length as the first.</p></div>
+      <div class="result" id="matchbox"><div class="l">Belt match</div><div class="v" id="r_match">—</div><div class="s" id="r_matchs"></div></div>
+    </div>
+  </fieldset>
+  <fieldset class="group">
     <legend>Target tension → frequency</legend>
     <div class="fields">
       <div class="field"><label for="tt">Tension you want</label><div class="inwrap"><input type="number" id="tt" value="8" min="0.1" step="0.5" inputmode="decimal"><span class="unit">N</span></div></div>
@@ -66,6 +73,26 @@
     LC.out("r_ts", isFinite(T) ? "≈ " + (T / 9.80665 * 1000).toFixed(0) + " gf · " + (T < 4 ? "loose for a 6 mm belt" : T <= 15 ? "within the usual 5–15 N range" : "tight — check bearings and idlers") : "");
     var tt = LC.num("tt"), ft = Math.sqrt(tt / mu) / (2 * L);
     LC.out("r_f", isFinite(ft) ? ft.toFixed(1) + " Hz" : "—");
+    // CoreXY: both belts drive both axes, so a mismatch skews motion rather than
+    // just softening one axis. Matching matters more than the absolute value.
+    var fb = LC.num("freqb");
+    if (isFinite(fb) && fb > 0 && isFinite(f) && f > 0) {
+      var Tb = 4 * L * L * fb * fb * mu;
+      var dHz = Math.abs(f - fb);
+      var pct = Math.abs(T - Tb) / Math.max(T, Tb) * 100;
+      var cls = dHz <= 2 ? "ok" : dHz <= 5 ? "warn" : "bad";
+      LC.setClass("matchbox", "result " + cls);
+      LC.out("r_match", dHz < 0.05 ? "Matched" : LC.fmt(dHz, 1) + " Hz apart");
+      LC.out("r_matchs", dHz < 0.05
+        ? "both belts at " + LC.fmt(f, 1) + " Hz"
+        : LC.fmt(Tb, 1) + " N vs " + LC.fmt(T, 1) + " N — " + LC.fmt(pct, 0) + "% difference" +
+          (dHz <= 2 ? " · close enough" : dHz <= 5 ? " · worth evening up" : " · will skew prints and cause uneven ringing"));
+    } else {
+      LC.setClass("matchbox", "result");
+      LC.out("r_match", "—");
+      LC.out("r_matchs", "enter the second belt to compare");
+    }
+
     var df = LC.num("docf"), ds = LC.num("docspan") / 1000, conv = df * ds / L;
     LC.out("r_conv", isFinite(conv) ? conv.toFixed(1) + " Hz" : "—");
     LC.out("r_convs", isFinite(conv) ? "same tension as " + LC.fmt(df, 1) + " Hz at " + LC.fmt(ds * 1000, 0) + " mm (≈ " + (4 * ds * ds * df * df * mu).toFixed(1) + " N)" : "");
@@ -97,6 +124,14 @@
   <li>Adjust the tensioner and repeat. On CoreXY, do both belts and match them within 1–2 Hz.</li>
 </ol>
 <p>A belt-tension gauge or a luggage scale hooked to the belt gives the tension directly, but the frequency method is free and usually more repeatable.</p>
+
+<h2>Where the string model breaks down</h2>
+<p>The formula treats the belt as an ideal string with no stiffness of its own. Real toothed belts have steel or glass cords and a rubber body, and both resist bending. On a long span that contribution is negligible and the model is good. On a <strong>short span — roughly under 80&ndash;100 mm — bending stiffness adds to the restoring force</strong>, so the belt rings higher than tension alone would explain and the calculated tension reads high.</p>
+<p>Two practical consequences. Measure the longest free span you can reach rather than a convenient short one. And when comparing against a published figure, match the span length where you can, because converting a short-span measurement to a long span inherits that error.</p>
+
+<h2>Matching the two belts on a CoreXY</h2>
+<p>On a CoreXY both belts drive both axes together, so their <em>relative</em> tension matters more than the absolute number. A mismatch means the two diagonal motions have different stiffness, which shows as skewed prints, dimensions that differ between X and Y, and ringing that appears on one axis but not the other. If your <a href="/shrinkage-compensation-calculator/">X and Y measurements disagree</a> on a test square, unequal belts are a prime suspect.</p>
+<p>Aim to get both within about 2 Hz of each other at the same span. Equal belts at a slightly wrong tension beat one perfect belt and one loose one.</p>
 
 <h2>What tension to aim for</h2>
 <p>There's no universal number, and the honest answer is: use your manufacturer's figure if one exists. Some that are commonly cited:</p>
