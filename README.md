@@ -71,3 +71,10 @@ The push deploys it.
 
 **Switch on ads or analytics** — `MONETIZATION` block in `build.py`. Every field is inert until
 filled in. Steps in `docs/ADS.md`.
+
+---
+
+## License
+
+[MIT](LICENSE). The code is free to reuse; the calculator explanations and article
+text are the site's own content, so please don't republish those wholesale.
