@@ -19,7 +19,7 @@ function Element(tag, attrs) {
   this.attrs = attrs || {};
   this.id = this.attrs.id || "";
   this.type = this.attrs.type || (this.tagName === "SELECT" ? "select" : "text");
-  this.value = this.attrs.value != null ? this.attrs.value : "";
+  this._value = this.attrs.value != null ? String(this.attrs.value) : "";
   this.checked = "checked" in this.attrs;
   this.name = this.attrs.name || "";
   this.hidden = "hidden" in this.attrs;
@@ -31,6 +31,10 @@ function Element(tag, attrs) {
   this._listeners = {};
   this.children = [];
 }
+Object.defineProperty(Element.prototype, "value", {
+  get: function () { return this._value; },
+  set: function (v) { this._value = v == null ? "" : String(v); }
+});
 Object.defineProperty(Element.prototype, "innerHTML", {
   get: function () { return this._innerHTML; },
   set: function (v) {

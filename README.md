@@ -63,7 +63,8 @@ The push deploys it.
    recalculates on every keystroke and remembers the values. Helpers in `static/app.js`:
    `LC.num(id)`, `LC.val(id)`, `LC.out(id, text)`, `LC.fmt(x, decimals)`, `LC.money(x)`, `LC.hours(h)`,
    `LC.show(id, bool)`, `LC.currencyPicker(containerId)`, `LC.copyButton(btnId, fn)`, `LC.download(name, text)`,
-   `LC.modePanels(radioName)`.
+   `LC.modePanels(radioName, attr)`, `LC.parseGcode(text)` (pulls grams/hours/layers out of a pasted
+   slicer header — PrusaSlicer, Orca, Bambu and Cura formats).
 4. Put `<!--ARTICLE-->` after the script, then the article HTML (formula, worked example, guidance).
 5. Add assertions for it in `tests/run.js` — a couple of known-good input/output pairs and any edge case
    (zero, blank, absurd values). The tests drive the real built page, so they catch a broken formula

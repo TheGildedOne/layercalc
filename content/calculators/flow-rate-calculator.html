@@ -46,6 +46,7 @@
     <div class="result primary"><div class="l">New flow</div><div class="v" id="r_new">—</div><div class="s" id="r_alt"></div></div>
     <div class="result"><div class="l">Average wall</div><div class="v" id="r_avg">—</div><div class="s" id="r_spread"></div></div>
     <div class="result"><div class="l">Change</div><div class="v" id="r_change">—</div></div>
+    <div class="result" id="sensbox"><div class="l">Measurement sensitivity</div><div class="v" id="r_sens">—</div><div class="s">how much a ±0.02 mm caliper error moves the answer</div></div>
   </div>
   <div id="warn" class="warn-box" hidden></div>
   <div class="actions"><button type="button" class="btn-ghost" data-reset>Reset</button></div>
@@ -68,7 +69,15 @@
     LC.out("r_spread", ws.length + " sides, spread " + spread.toFixed(2) + " mm");
     var change = (newRatio / curRatio - 1) * 100;
     LC.out("r_change", (change >= 0 ? "+" : "") + change.toFixed(1) + " %");
+
+    // Flow is inversely proportional to the measured wall, so a fixed caliper
+    // error becomes a percentage error of 0.02/avg. This is the single biggest
+    // objection to the method and it is worth showing rather than burying.
+    var sens = 0.02 / avg * 100;
+    LC.out("r_sens", "±" + sens.toFixed(1) + " %");
+    LC.setClass("sensbox", "result " + (sens > 4 ? "warn" : ""));
     var msgs = [];
+    if (sens > 4) msgs.push("A 0.02 mm caliper error on these walls shifts the result by " + sens.toFixed(1) + "%, which is larger than the adjustment most people are chasing. Ellis' Print Tuning Guide lists wall-measuring as its first misconception for exactly this reason — see the notes below, and treat the number as a starting point rather than an answer.");
     if (Math.abs(change) > 8) msgs.push("A change over 8% is unusual. Check e-steps first, make sure the cube really was a single wall, and that you measured mid-height.");
     if (spread > 0.05) msgs.push("The four sides differ by " + spread.toFixed(2) + " mm — that's a lot. Uneven walls point to belt tension, frame squareness or a wobbly single wall rather than flow; the average is still usable but treat it as rough.");
     LC.show("warn", msgs.length > 0); LC.html("warn", msgs.join("<br><br>"));
@@ -120,5 +129,26 @@
   <li><a href="/shrinkage-compensation-calculator/">Dimensional accuracy</a> — scale and hole compensation, per material.</li>
 </ol>
 
-<h2>Limits of the single-wall method</h2>
-<p>A single 0.45 mm wall is thin and can bulge or lean as the print grows, so the measurement scatters more than the underlying flow does. That's why it's four sides averaged and measured mid-height. Two known corrections some people apply: Cura's line width includes the full rounded edge of the extrusion, while some flow tests assume a rectangular cross-section, which shifts results by a couple of percent; and printing the test at high speed will under-read if the hotend can't keep up (check the <a href="/max-volumetric-speed-calculator/">volumetric flow</a>). If two runs land within 1–2% of each other, stop — that's within the diameter tolerance of the filament itself.</p>
+<h2>How much to trust this number</h2>
+<p>Worth being straight about: the leading community reference disagrees with this method. Ellis' Print Tuning Guide lists <em>"tuning extrusion multiplier by measuring 1&ndash;2 cube walls"</em> as the <strong>first entry</strong> on its Misconceptions page. The reasoning is sound and worth understanding rather than ignoring:</p>
+<ul>
+  <li><strong>The error ratio is brutal.</strong> A 0.02 mm slip with calipers &mdash; well within normal for squeezing a plastic wall &mdash; is about 4% of a 0.48 mm wall. That is larger than the correction most people are trying to make. The calculator now shows this figure live, from your own numbers, so you can see how much of the result is noise.</li>
+  <li><strong>Measurements read high.</strong> A single unsupported wall bulges, and layer wobble and filament diameter variation both add width. The measurement captures all of that alongside the flow you are trying to isolate.</li>
+  <li><strong>Small objects amplify everything.</strong> Dimensional work is more reliable on larger parts, where a fixed error is a smaller proportion.</li>
+</ul>
+<p>None of that makes the arithmetic wrong &mdash; the formula is exact. It means the <em>input</em> carries more uncertainty than the output's decimal places suggest. Two runs landing within 1&ndash;2% of each other is as good as this method gets, and that is roughly the diameter tolerance of the filament itself.</p>
+
+<h3>What to do instead, or as well</h3>
+<ul>
+  <li><strong>Tune by top surface.</strong> Ellis' preferred approach: print test blocks at 1&ndash;2% flow increments and pick the one whose top surface is smoothest. Too much flow looks and feels rough; too little leaves gaps and valleys between lines. It is a visual judgement rather than a measurement, which is precisely why it sidesteps the caliper problem. Look at the widest flat areas of the print.</li>
+  <li><strong>Use your slicer's built-in test.</strong> OrcaSlicer's Calibration &rarr; Flow Rate runs a two-pass version of the same visual method and applies the result for you.</li>
+  <li><strong>Fix dimensions separately.</strong> If parts come out the wrong size, that is a job for <a href="/shrinkage-compensation-calculator/">shrinkage compensation and hole offsets</a>, not for flow. Using flow to chase dimensional accuracy trades a good top surface for a number on the calipers.</li>
+</ul>
+<p>Use this page when you want a fast numerical starting point, or to sanity-check a value you arrived at visually. If the two disagree, trust the top surface.</p>
+
+<h2>Sources</h2>
+<ul>
+  <li>Ellis' Print Tuning Guide &mdash; <em>Extrusion Multiplier</em> and <em>Misconceptions &amp; Bad Advice</em>. Source of the top-surface method and of the criticism above.</li>
+  <li>Slicer documentation for where the setting lives and whether it is expressed as a percentage or a ratio.</li>
+</ul>
+<p>The formula and the sensitivity figure on this page are exact arithmetic. Everything else &mdash; which method is better, how much to trust a reading &mdash; is judgement, sourced above so you can weigh it yourself.</p>

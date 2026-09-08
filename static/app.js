@@ -119,6 +119,43 @@ window.LC = (function () {
     }
   }
 
+  /* Pull filament weight, print time and layer count out of a pasted G-code
+     header. Slicers all write these as comments, in their own formats:
+       PrusaSlicer/Orca/Bambu  ; filament used [g] = 12.34
+                               ; estimated printing time (normal mode) = 1h 23m 45s
+       Cura                    ;Filament used: 1.234m
+                               ;TIME:4567
+     Returns whatever it could find; missing keys are simply absent. */
+  function parseGcode(text) {
+    var out = {};
+    if (!text) return out;
+    var s = String(text).slice(0, 400000);   // headers live at the top or tail; cap the work
+    var m;
+
+    if ((m = s.match(/filament\s+used\s*\[g\]\s*[:=]\s*([\d.]+)/i))) out.grams = parseFloat(m[1]);
+    else if ((m = s.match(/filament\s+used\s*\[mm\]\s*[:=]\s*([\d.]+)/i))) out.mm = parseFloat(m[1]);
+    if ((m = s.match(/;\s*Filament\s+used\s*:\s*([\d.]+)\s*m\b/i))) out.meters = parseFloat(m[1]);
+    if ((m = s.match(/filament\s+used\s*\[cm3\]\s*[:=]\s*([\d.]+)/i))) out.cm3 = parseFloat(m[1]);
+
+    // "1h 23m 45s" / "23m 45s" / "45s", in whichever key the slicer used
+    var t = s.match(/(?:estimated\s+printing\s+time[^=:\n]*|model\s+printing\s+time)\s*[:=]\s*([^\n;]+)/i);
+    if (t) {
+      var str = t[1], h = str.match(/(\d+)\s*[hd]/i), mm = str.match(/(\d+)\s*m(?!s)/i), ss = str.match(/(\d+)\s*s/i);
+      var secs = (h ? parseInt(h[1], 10) * 3600 : 0) + (mm ? parseInt(mm[1], 10) * 60 : 0) + (ss ? parseInt(ss[1], 10) : 0);
+      if (secs > 0) out.hours = secs / 3600;
+    }
+    if (out.hours == null && (m = s.match(/;TIME:\s*(\d+)/i))) out.hours = parseInt(m[1], 10) / 3600;
+
+    if ((m = s.match(/;\s*LAYER_COUNT\s*:\s*(\d+)/i))) out.layers = parseInt(m[1], 10);
+    else if ((m = s.match(/;\s*total\s+layer\s+number\s*[:=]\s*(\d+)/i))) out.layers = parseInt(m[1], 10);
+
+    // Cura reports length only; convert with the diameter/density if we were given them
+    if (out.grams == null && out.meters != null && out.density && out.diameter) {
+      out.grams = out.meters * Math.PI * Math.pow(out.diameter / 2, 2) * out.density;
+    }
+    return out;
+  }
+
   function download(filename, text, mime) {
     var blob = new Blob([text], { type: mime || "text/plain" });
     var url = URL.createObjectURL(blob);
@@ -150,6 +187,7 @@ window.LC = (function () {
     num: num, val: val, checked: checked, fmt: fmt, money: money, hours: hours,
     out: out, html: html, show: show, setClass: setClass, bind: bind,
     currency: currency, currencyPicker: currencyPicker, copyButton: copyButton,
-    download: download, modePanels: modePanels, el: el, store: store, load: load
+    download: download, modePanels: modePanels, el: el, store: store, load: load,
+    parseGcode: parseGcode
   };
 })();

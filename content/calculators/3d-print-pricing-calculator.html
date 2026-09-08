@@ -6,7 +6,7 @@
   "short": "Full cost of a print plus markup, and the list price that survives marketplace fees.",
   "category": "cost",
   "order": 20,
-  "updated": "2026-09-07",
+  "updated": "2026-09-08",
   "related": ["filament-cost-calculator", "3d-printer-electricity-cost-calculator", "print-time-estimator", "resin-print-cost-calculator"],
   "faq": [
     {"q": "How much should I charge for a 3D print?", "a": "Cost it fully first — material, machine time, electricity, labor and a failure allowance — then add a markup, typically 30–100% depending on how custom the work is. For most hobby-scale sellers that lands between $1 and $3 per hour of print time plus material, but the calculator gives you your own number rather than a rule of thumb."},
@@ -17,6 +17,18 @@
   ]
 }
 <form id="f" class="calc-form" novalidate>
+  <fieldset class="group">
+    <legend>Start from your G-code (optional)</legend>
+    <div class="field">
+      <label for="gcode">Paste the first ~40 lines of your sliced file</label>
+      <textarea id="gcode" placeholder="; filament used [g] = 61.2&#10;; estimated printing time (normal mode) = 6h 12m 30s&#10;&#10;PrusaSlicer, OrcaSlicer, Bambu Studio and Cura headers all work."></textarea>
+      <p class="hint">Read entirely in your browser. Fills in filament weight and print time so you are not copying numbers by hand.</p>
+    </div>
+    <div class="actions" style="margin-top:10px">
+      <button type="button" class="btn" id="readgc">Read G-code</button>
+      <span id="gcstatus" class="hint" style="margin:0"></span>
+    </div>
+  </fieldset>
   <fieldset class="group">
     <legend>Material</legend>
     <div class="fields">
@@ -128,6 +140,16 @@
     last = { g: g, hrs: hrs, material: material, machine: dep + maint + elec, labor: labor, other: other, failAllow: failAllow,
              cost: cost, price: price, list: list, fees: fees, mkt: mkt };
   }
+  LC.el("readgc").addEventListener("click", function () {
+    var found = LC.parseGcode(LC.val("gcode"));
+    var got = [];
+    if (found.grams != null) { LC.el("g").value = found.grams.toFixed(2); got.push(LC.fmt(found.grams, 1) + " g"); }
+    if (found.hours != null) { LC.el("hrs").value = found.hours.toFixed(2); got.push(LC.hours(found.hours)); }
+    LC.out("gcstatus", got.length ? "Read " + got.join(" and ") + "."
+      : "Couldn't find filament weight or print time in that. Paste the comment lines from the top of the file.");
+    calc();
+  });
+
   LC.copyButton("copy", function () {
     var L = last;
     var lines = ["3D print quote — " + LC.fmt(L.g, 0) + " g, " + LC.hours(L.hrs) + " print time",
@@ -161,6 +183,11 @@
 </ul>
 <p>Total cost <strong>$8.16</strong>. With a 50% markup the price is <strong>$12.24</strong>. To net that on Etsy, list at ($12.24 + $0.45) ÷ 0.905 = <strong>$14.02</strong>. Notice that "three times material" would have given $3.96 — a loss on the labor alone.</p>
 </div>
+
+<h2>Reading the numbers straight out of your G-code</h2>
+<p>Every mainstream slicer writes the figures it calculated into comments at the top or bottom of the file. Paste that block into the box above and the filament weight and print time are filled in for you, which removes the most common source of error in a quote &mdash; transcribing the wrong number, or last week's number.</p>
+<div class="formula">PrusaSlicer / OrcaSlicer / Bambu Studio<br>&nbsp;&nbsp;; filament used [g] = 61.2<br>&nbsp;&nbsp;; estimated printing time (normal mode) = 6h 12m 30s<br><br>Cura<br>&nbsp;&nbsp;;Filament used: 20.4m<br>&nbsp;&nbsp;;TIME:22350</div>
+<p>Open the .gcode in any text editor and copy the first forty lines or so. Parsing happens in your browser and the file never leaves your machine &mdash; you can paste the whole file if it is small, though the header alone is enough.</p>
 
 <h2>Choosing the inputs</h2>
 <h3>Printer life</h3>

@@ -6,7 +6,7 @@
   "short": "Cost per gram, per meter and per print from the spool price, with waste and failure allowances.",
   "category": "cost",
   "order": 10,
-  "updated": "2026-09-07",
+  "updated": "2026-09-08",
   "related": ["3d-print-pricing-calculator", "filament-length-weight-calculator", "3d-printer-electricity-cost-calculator", "filament-remaining-calculator"],
   "faq": [
     {"q": "How much does 3D printer filament cost per gram?", "a": "Divide the spool price by its net weight. A 1 kg spool of PLA at $20 is 2 cents per gram, so a 50 g print costs about $1 in material. Budget PLA runs roughly $0.015–0.025/g, PETG and ABS $0.018–0.03/g, TPU $0.025–0.04/g, and carbon-fiber nylon $0.05–0.08/g."},
@@ -75,6 +75,7 @@
     <div class="result"><div class="l">Including waste &amp; failures</div><div class="v" id="r_adj">—</div></div>
     <div class="result"><div class="l">Cost per gram</div><div class="v" id="r_perg">—</div></div>
     <div class="result"><div class="l">Cost per meter</div><div class="v" id="r_perm">—</div><div class="s" id="r_gpm"></div></div>
+    <div class="result"><div class="l">Prints per spool</div><div class="v" id="r_prints">—</div><div class="s" id="r_printss"></div></div>
   </div>
   <div class="actions">
     <button type="button" class="btn-ghost" data-reset>Reset</button>
@@ -100,6 +101,12 @@
     LC.out("r_perg", LC.money(perG, 4));
     LC.out("r_perm", LC.money(perM, 3));
     LC.out("r_gpm", isFinite(gpm) ? LC.fmt(gpm, 2) + " g per meter · " + LC.fmt(1000 / gpm, 0) + " m per kg" : "");
+    // How many copies one spool yields, using the waste- and failure-adjusted figure
+    var gramsPerPrint = grams * (1 + waste / 100) / (1 - fail / 100);
+    var runs = spool / gramsPerPrint;
+    LC.out("r_prints", isFinite(runs) && runs > 0 ? LC.fmt(Math.floor(runs), 0) : "—");
+    LC.out("r_printss", isFinite(runs) && runs > 0
+      ? "at " + LC.fmt(gramsPerPrint, 1) + " g each, incl. waste and failures" : "");
   }
   LC.currencyPicker("cur");
   LC.bind("f", calc);
@@ -144,6 +151,11 @@
 <tr><td>Nylon / PA-CF</td><td>$40 – $80</td><td>$0.040 – $0.080</td><td>≈ 365 m</td></tr>
 </tbody></table></div>
 <p>Prices are typical retail for 1 kg spools of mainstream brands and move with sales and bulk deals; treat them as a sanity check for your own number, not a quote.</p>
+
+<h2>Prints per spool</h2>
+<p>The same arithmetic answers the question people usually mean: how many of these will one roll make?</p>
+<div class="formula">prints per spool = spool weight ÷ (grams per print × (1 + waste%) ÷ (1 &minus; failure%))</div>
+<p>A 1 kg spool and a 50 g print is not 20 copies once 5% waste and a 5% failure rate are in &mdash; it is 18. That gap is the difference between quoting a batch of 20 accurately and buying an extra spool halfway through.</p>
 
 <h2>What this number doesn't cover</h2>
 <p>Material is usually the smallest part of what a print really costs. A six-hour print on a $400 printer with a 3,000-hour life has burned $0.80 of the machine, a few cents of electricity, and however much of your time it took to slice, remove and clean up. If you're pricing prints to sell, put the cost per gram from this page into the <a href="/3d-print-pricing-calculator/">pricing calculator</a> and let it add the rest.</p>

@@ -80,6 +80,13 @@ group("filament-cost-calculator", () => {
   p.set("fail", 0).set("waste", 0).set("unit", "m").set("used", 100);
   check("100 m of PLA = 298 g", p.text("r_grams"), /^298\.\d g/);
 
+  // prints per spool, adjusted for waste and failures
+  p.set("fail", 0).set("waste", 0).set("unit", "g").set("used", 50);
+  check("20 prints from a clean kilo", p.text("r_prints"), "20");
+  p.set("waste", 5).set("fail", 5);
+  check("waste and failures cut it to 18", p.text("r_prints"), "18");
+  p.set("waste", 5).set("fail", 0);
+
   // edge: zero spool weight must not print Infinity
   p.set("unit", "g").set("used", 50).set("spool", 0);
   check("zero spool weight", p.text("r_perg"), "—");
@@ -103,6 +110,26 @@ group("3d-print-pricing-calculator", () => {
   p.set("mkt", "none");
   check("direct list == price", p.text("r_list"), p.text("r_price"));
 
+  // G-code header parsing - PrusaSlicer/Orca/Bambu format
+  p.set("gcode", "; filament used [g] = 61.2\n; estimated printing time (normal mode) = 6h 12m 30s\n");
+  p.doc.getElementById("readgc").dispatchEvent({ type: "click" });
+  check("gcode filled grams", p.doc.getElementById("g").value, "61.20");
+  check("gcode filled hours", p.doc.getElementById("hrs").value, "6.21");
+  check("gcode status reports both", p.text("gcstatus"), /61\.2 g and 6h 1[23]m/);
+
+  // Cura format: seconds and metres
+  p.set("gcode", ";Filament used: 20.4m\n;TIME:22350\n");
+  p.doc.getElementById("readgc").dispatchEvent({ type: "click" });
+  check("cura time parsed", p.doc.getElementById("hrs").value, "6.21");
+
+  // nonsense input must not corrupt the form
+  const gBefore = p.doc.getElementById("g").value;
+  p.set("gcode", "hello, this is not gcode");
+  p.doc.getElementById("readgc").dispatchEvent({ type: "click" });
+  check("junk gcode says so", p.text("gcstatus"), /Couldn't find/);
+  check("junk gcode leaves fields alone", p.doc.getElementById("g").value, gBefore);
+
+  p.set("mkt", "none").set("g", 60).set("hrs", 6);
   // edge: zero labour must not break the per-hour line
   p.set("lab", 0);
   check("zero labour minutes", p.text("r_hourly"), "");
@@ -164,13 +191,27 @@ group("e-steps-calculator", () => {
   check("under-extrusion wording", p.text("r_err"), /under-extruding by 3 mm/);
   check("marlin gcode", p.text("snippet"), /M92 E95\.88/);
 
-  // Klipper inverts the formula - the bug this tool exists to prevent
-  p.pick("fw_klipper").set("cur", 33.5);
-  check("klipper rotation_distance", p.text("r_new"), "32.4950");
-  check("klipper config snippet", p.text("snippet"), /rotation_distance: 32\.4950/);
+  // Switching to Klipper adopts its documented procedure: 70 mm mark, 50 mm extruded
+  p.pick("fw_klipper");
+  check("klipper default extrude length", p.doc.getElementById("req").value, "50");
+  check("klipper default mark", p.doc.getElementById("mark").value, "70");
+  check("klipper cites F60", p.text("reqhint"), /G1 E50 F60/);
+
+  // Klipper inverts the formula - the bug this tool exists to prevent - and
+  // rounds to 3 dp per its own docs. 33.5 * 47 / 50 = 31.490
+  p.set("cur", 33.5).set("rem", 23);
+  check("klipper rotation_distance", p.text("r_new"), "31.490");
+  check("klipper config snippet", p.text("snippet"), /rotation_distance: 31\.490/);
+  // a >2 mm miss is Klipper's own repeat threshold
+  check("klipper 3 mm miss prompts a repeat", p.hidden("warn"), false);
+
+  // switching back restores the Marlin convention
+  p.pick("fw_marlin");
+  check("marlin default extrude length", p.doc.getElementById("req").value, "100");
+  check("marlin default mark", p.doc.getElementById("mark").value, "120");
 
   // exact calibration reads cleanly, not "exactly-extruding by 0 mm"
-  p.pick("fw_marlin").set("cur", 93).set("rem", 20);
+  p.set("cur", 93).set("rem", 20);
   check("perfect calibration", p.text("r_new"), "93.00");
   check("no awkward zero wording", p.text("r_err"), "exactly what was requested");
   check("no warning when correct", p.hidden("warn"), true);
@@ -187,6 +228,13 @@ group("flow-rate-calculator", () => {
   check("average wall", p.text("r_avg"), "0.480 mm");
   p.set("fmt", "ratio").set("cur", 1);
   check("ratio mode output", p.text("r_new"), "0.938");
+  // measurement sensitivity - 0.02 / 0.480 = 4.2%
+  check("caliper sensitivity shown", p.text("r_sens"), "±4.2 %");
+  // thicker walls are proportionally less sensitive
+  p.set("w1", 0.9).set("w2", 0.9).set("w3", 0.9).set("w4", 0.9).set("exp", 0.85);
+  check("thicker walls less sensitive", p.text("r_sens"), "±2.2 %");
+  p.set("w1", 0.48).set("w2", 0.47).set("w3", 0.49).set("w4", 0.48).set("exp", 0.45);
+
   // wildly uneven walls warn
   p.set("fmt", "pct").set("cur", 100).set("w1", 0.4).set("w4", 0.6);
   check("uneven walls warn", p.hidden("warn"), false);
