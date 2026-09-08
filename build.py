@@ -31,7 +31,7 @@ SITE = {
     "tagline": "Free 3D printing calculators",
     "description": (
         "Free 3D printing calculators: filament cost, print pricing, e-steps, flow rate, "
-        "shrinkage, belt tension, test tower G-code and more. No signup, runs in your browser."
+        "shrinkage, belt tension and test-tower G-code. No signup, runs in your browser."
     ),
     "url": "https://layercalc.com",
     "lang": "en",
@@ -400,7 +400,7 @@ def build_home(tools: list[dict], base: str, hub: str) -> str:
                              for i, t in enumerate(tools)]},
     ]}
     return page_shell(base, content=content, title=f'{SITE["name"]} – Free 3D Printing Calculators',
-                      page_title=f'{SITE["name"]} – Free 3D Printing Calculators (Cost, Calibration, Filament)',
+                      page_title=f'{SITE["name"]} – Free 3D Printing Calculators',
                       description=SITE["description"], canonical_path="/", jsonld=jsonld, tools=tools)
 
 
