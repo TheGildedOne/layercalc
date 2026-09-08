@@ -26,6 +26,7 @@
 
 <link rel="icon" href="/static/mark.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<link rel="preload" href="/static/fonts/manrope-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/static/style.css">
 <script src="/static/app.js"></script>
 
@@ -52,12 +53,15 @@
 </main>
 
 <footer class="footer">
-  <div class="wrap">
-    <p><strong>{{site_name}}</strong> — {{tagline}}. Every tool runs in your browser; nothing you type is sent anywhere.</p>
-    <nav class="footer-nav" aria-label="Footer">{{footer_nav}}</nav>
-    <nav class="footer-nav" aria-label="Legal"><a href="/about/">About</a><a href="/contact/">Contact</a><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a></nav>
-    <p>&copy; {{year}} {{site_name}}. Results are estimates; always sanity-check before relying on them.</p>
+  <div class="wrap footer-grid">
+    <div class="footer-brand">
+      <a class="brand" href="/"><img src="/static/mark.svg" alt="" width="30" height="30"><span>{{site_name}}</span></a>
+      <p>{{tagline}}. Every tool runs in your browser; nothing you type is sent anywhere.</p>
+    </div>
+    <nav class="footer-col" aria-label="Calculators"><h4>Calculators</h4>{{footer_nav}}</nav>
+    <nav class="footer-col" aria-label="Site"><h4>Site</h4><a href="/about/">About</a><a href="/contact/">Contact</a><a href="/filament-settings-reference/">Filament reference</a><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a></nav>
   </div>
+  <div class="wrap footer-legal"><p>&copy; {{year}} {{site_name}}. Results are estimates; always sanity-check before relying on them.</p></div>
 </footer>
 </body>
 </html>

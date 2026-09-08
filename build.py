@@ -28,7 +28,7 @@ DIST = ROOT / "dist"
 
 SITE = {
     "name": "LayerCalc",
-    "tagline": "free 3D printing calculators",
+    "tagline": "Free 3D printing calculators",
     "description": (
         "Free 3D printing calculators: filament cost, print pricing, e-steps, flow rate, "
         "shrinkage, belt tension, test tower G-code and more. No signup, runs in your browser."
@@ -85,6 +85,32 @@ CATEGORIES = {
 }
 
 REFERENCE_NAV = [("Reference", "/filament-settings-reference/")]
+
+# Line icons for the cards, keyed by slug (24x24 viewBox, stroked in CSS).
+ICONS = {
+    "filament-cost-calculator": '<circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5h3.5a1.75 1.75 0 0 1 0 3.5h-2a1.75 1.75 0 0 0 0 3.5H15"/>',
+    "3d-print-pricing-calculator": '<path d="M20.5 12.5 12.5 20.5a1.5 1.5 0 0 1-2.1 0L3 13V3h10l7.5 7.5a1.5 1.5 0 0 1 0 2z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
+    "resin-print-cost-calculator": '<path d="M12 3s6.5 7 6.5 11.5a6.5 6.5 0 0 1-13 0C5.5 10 12 3 12 3z"/>',
+    "3d-printer-electricity-cost-calculator": '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
+    "e-steps-calculator": '<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>',
+    "flow-rate-calculator": '<path d="M4 16a8 8 0 0 1 16 0"/><path d="M12 16l4.5-5"/><circle cx="12" cy="16" r="1.5"/><path d="M2 20h20"/>',
+    "shrinkage-compensation-calculator": '<path d="M4 20 20 4M4 20v-6M4 20h6M20 4v6M20 4h-6"/>',
+    "layer-height-calculator": '<path d="m12 3 9 4.5-9 4.5-9-4.5z"/><path d="m3 12 9 4.5 9-4.5"/><path d="m3 16.5 9 4.5 9-4.5"/>',
+    "max-volumetric-speed-calculator": '<path d="M3 12h4l3-8 4 16 3-8h4"/>',
+    "belt-tension-calculator": '<path d="M2 12c2-7 4-7 6 0s4 7 6 0 4-7 6 0"/>',
+    "temp-tower-generator": '<rect x="8" y="3" width="8" height="18" rx="1.5"/><path d="M8 8.5h8M8 13h8M8 17.5h8"/>',
+    "filament-remaining-calculator": '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><path d="M12 3v6M12 15v6M3 12h6M15 12h6"/>',
+    "filament-length-weight-calculator": '<rect x="3" y="8" width="18" height="8" rx="1.5"/><path d="M7 8v3M11 8v4M15 8v3M19 8v4"/>',
+    "3d-model-scale-calculator": '<path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/><rect x="8.5" y="8.5" width="7" height="7" rx="1"/>',
+    "print-time-estimator": '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>',
+    "filament-settings-reference": '<path d="M4 4.5h5.5A2.5 2.5 0 0 1 12 7v13a2 2 0 0 0-2-2H4z"/><path d="M20 4.5h-5.5A2.5 2.5 0 0 0 12 7v13a2 2 0 0 1 2-2h6z"/>',
+}
+DEFAULT_ICON = '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 12h8M12 8v8"/>'
+
+
+def icon_svg(slug: str) -> str:
+    return (f'<span class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24">'
+            f'{ICONS.get(slug, DEFAULT_ICON)}</svg></span>')
 
 # ------------------------------------------------------------------ helpers
 
@@ -216,7 +242,7 @@ def footer_nav_html(tools: list[dict]) -> str:
 
 
 def card(tool: dict) -> str:
-    return (f'<a class="card" href="/{tool["slug"]}/"><h3>{esc(tool["title"])}</h3>'
+    return (f'<a class="card" href="/{tool["slug"]}/">{icon_svg(tool["slug"])}<h3>{esc(tool["title"])}</h3>'
             f'<p>{esc(tool["short"])}</p></a>')
 
 
@@ -318,27 +344,42 @@ def build_tool(tool: dict, tools: list[dict], base: str, tpl: str) -> str:
 
 
 def build_home(tools: list[dict], base: str, hub: str) -> str:
-    parts = ['<section class="hero">',
-             f'  <h1>Free 3D printing calculators that give you the exact number to type in</h1>',
-             '  <p>Filament cost, print quotes, e-steps, flow rate, shrinkage, belt tension, test towers and more. '
-             'No signup, no app, nothing leaves your browser.</p>',
+    parts = ['<div class="home">', '<section class="hero">',
+             '  <p class="eyebrow">Free · No signup · Runs in your browser</p>',
+             '  <h1>3D printing calculators that give you <em>the exact number</em> to type in</h1>',
+             '  <p>Filament cost, print quotes, e-steps, flow rate, shrinkage, belt tension, test-tower G-code and more — '
+             'each with the formula and a worked example, so you can check it rather than trust it.</p>',
+             '  <div class="hero-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>'
+             '<label class="visually-hidden" for="toolsearch">Search calculators</label>'
+             f'<input type="search" id="toolsearch" placeholder="Search {len(tools)} calculators — e-steps, Etsy fees, belt tension…" autocomplete="off"></div>',
+             f'  <div class="hero-stats"><span><b>{len(tools)}</b> calculators</span><span><b>0</b> accounts or paywalls</span>'
+             '<span><b>100%</b> in your browser</span></div>',
              '</section>']
     for key, cat in CATEGORIES.items():
+        parts.append(f'<section class="section" data-section="{key}">')
         parts.append(f'<div class="section-head"><h2>{esc(cat["h1"])}</h2><a href="/{cat["slug"]}/">All {cat["nav"].lower()} tools &rarr;</a></div>')
         parts.append(f'<p>{esc(cat["intro"])}</p>')
         parts.append('<div class="cards">' + "".join(card(t) for t in tools if t["category"] == key) + "</div>")
+        parts.append('</section>')
         if key == "cost":
             parts.append(ad_unit("hub"))
-    parts.append('<div class="section-head"><h2>Reference</h2></div>')
-    parts.append('<div class="cards"><a class="card" href="/filament-settings-reference/"><h3>Filament settings & drying reference</h3>'
-                 '<p>Nozzle and bed temperatures, fan, enclosure, drying time, density and shrinkage for every common material, in one table.</p></a></div>')
-    parts.append('<h2>Why these tools</h2>')
+    parts.append('<section class="section" data-section="reference"><div class="section-head"><h2>Reference</h2></div>')
+    parts.append(f'<div class="cards"><a class="card" href="/filament-settings-reference/">{icon_svg("filament-settings-reference")}'
+                 '<h3>Filament settings & drying reference</h3>'
+                 '<p>Nozzle and bed temperatures, fan, enclosure, drying time, density and shrinkage for every common material, in one table.</p></a></div></section>')
+    parts.append('<p class="no-results" id="no-results" hidden>Nothing matches that. Try a material, a setting name, or what you\'re trying to work out.</p>')
     parts.append('<div class="why">'
                  '<div><h3>Built for one niche</h3><p>Every calculator here is for 3D printing. The defaults, presets and units are the ones you actually use.</p></div>'
                  '<div><h3>Shows the working</h3><p>Each page explains the formula and walks through a real example, so you can check the result rather than trust it.</p></div>'
                  '<div><h3>Private by design</h3><p>Everything runs in your browser. Your inputs are remembered on your device only.</p></div>'
                  '<div><h3>Free, no signup</h3><p>No accounts, no email gates, no watermarks, no limits.</p></div>'
                  '</div>')
+    parts.append('<script>(function(){var q=document.getElementById("toolsearch"),cards=document.querySelectorAll(".card"),'
+                 'secs=document.querySelectorAll(".section"),none=document.getElementById("no-results");'
+                 'q.addEventListener("input",function(){var t=q.value.trim().toLowerCase(),any=false;'
+                 'for(var i=0;i<cards.length;i++){var hit=!t||cards[i].textContent.toLowerCase().indexOf(t)>=0;cards[i].hidden=!hit;any=any||hit;}'
+                 'for(var j=0;j<secs.length;j++){secs[j].hidden=!!t&&!secs[j].querySelector(".card:not([hidden])");}'
+                 'none.hidden=any;});})();</script>')
     parts.append('<section class="home-faq"><h2>Common questions</h2>'
                  '<h3>Which calculator should I start with?</h3>'
                  '<p>If you sell prints: the <a href="/3d-print-pricing-calculator/">pricing calculator</a>. If prints look wrong: '
@@ -349,6 +390,7 @@ def build_home(tools: list[dict], base: str, hub: str) -> str:
                  '<h3>Do you store what I enter?</h3>'
                  '<p>Only in your own browser, so the form is filled in when you come back. Nothing is sent to a server.</p>'
                  '</section>')
+    parts.append('</div>')
     content = render(hub, {"content": "\n".join(parts)})
     jsonld = {"@context": "https://schema.org", "@graph": [
         {"@type": "WebSite", "name": SITE["name"], "url": SITE["url"] + "/", "description": SITE["description"]},
