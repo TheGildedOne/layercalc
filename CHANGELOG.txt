@@ -181,11 +181,44 @@ d6ec206  Tower generator - three more tests
 
 
 ---------------------------------------------------------------------
+10 SEPTEMBER - E-STEPS CONVERSION
+---------------------------------------------------------------------
+
+  Marlin <-> Klipper conversion added to the e-steps calculator
+  Spotted while checking rankings: competitors ranking for "klipper
+  rotation distance calculator" do a different job from ours. They
+  convert an existing Marlin value; ours calibrates from a test.
+  People moving a printer to Klipper search for the conversion.
+  * Uses Klipper's documented formula:
+      rotation_distance = full_steps x microsteps / steps_per_mm
+    and the reverse, with its "use 16 if unsure" microsteps guidance.
+  * Handles geared extruders properly. A Marlin steps/mm for a BMG
+    already includes the gearing, so it converts to 7.711 - correct
+    only if you do NOT also set gear_ratio. With gear_ratio: 50:17
+    Klipper measures at the final gear and needs 22.679. Mixing the
+    two leaves you out by ~3x. The page warns when a value looks
+    geared and the box is unticked.
+  * The docs state the base formula; the multiply-by-the-ratio rule
+    is derived from how they define rotation_distance under
+    gear_ratio. The sources section says which is which.
+  * 13 new tests (214 total), including the round trip and a
+    nonsense-ratio guard.
+
+  Also found: the search index still shows a previous site's title
+  and description for layercalc.com - "Calculate the cost of 3d
+  printing... print farm or freelancing custom jobs". The domain
+  appears to have hosted a similar product before. Actions: request
+  re-indexing of the home page in Search Console, and watch its
+  "Not found (404)" report for the old site's URLs so they can be
+  redirected to matching pages.
+
+
+---------------------------------------------------------------------
 WHERE THINGS STAND
 ---------------------------------------------------------------------
 
   25 pages live, all returning 200
-  201 calculator tests passing, wired into CI
+  214 calculator tests passing, wired into CI
   1,255 build-time validation checks
   ~6 KB per page gzipped
   Zero broken links, zero orphans

@@ -243,6 +243,35 @@ group("e-steps-calculator", () => {
   // >10% change warns (slipping, not e-steps)
   p.set("rem", 60);
   check("large change warns", p.hidden("warn"), false);
+
+  // --- Marlin <-> Klipper conversion. A different job from calibration.
+  // Klipper documents: rotation_distance = full_steps x microsteps / steps_per_mm
+  check("93 steps/mm -> rotation_distance", p.text("r_convert"), "34.409");
+  check("shows the working", p.text("r_converts"), /200 × 16 ÷ 93/);
+  check("config snippet", p.text("convsnippet"), /rotation_distance: 34\.409/);
+  check("snippet carries microsteps", p.text("convsnippet"), /microsteps: 16/);
+  check("no warning for a normal value", p.hidden("convwarn"), true);
+
+  // Geared extruder: a BMG is 415 steps/mm with the 50:17 gearing baked in
+  p.set("cspm", 415);
+  check("BMG without gear_ratio", p.text("r_convert"), "7.711");
+  check("warns about the gear_ratio trap", p.hidden("convwarn"), false);
+  p.set("cusegear", true).set("cgear", "50:17");
+  check("BMG with gear_ratio 50:17", p.text("r_convert"), "22.679");
+  check("gear_ratio written to config", p.text("convsnippet"), /gear_ratio: 50:17/);
+
+  // Back the other way must round-trip
+  p.pick("conv_tomarlin").set("crd", 22.679);
+  check("Klipper -> Marlin", p.text("r_convert"), "415.00");
+  check("Marlin snippet", p.text("convsnippet"), /M92 E415\.00/);
+
+  // Nonsense ratio must say so rather than return a number
+  p.set("cgear", "banana");
+  check("unparseable ratio warns", p.hidden("convwarn"), false);
+
+  // 0.9 degree motor doubles it
+  p.set("cusegear", false).pick("conv_tokl").set("cspm", 93).set("cfs", "400");
+  check("0.9 deg motor", p.text("r_convert"), "68.817");
 });
 
 group("flow-rate-calculator", () => {

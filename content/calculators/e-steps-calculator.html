@@ -1,12 +1,12 @@
 {
   "title": "E-Steps Calculator (Marlin & Klipper Rotation Distance)",
   "page_title": "E-Steps Calculator – Marlin & Klipper Rotation Distance",
-  "description": "Calibrate your extruder: enter current e-steps or rotation_distance, requested and measured extrusion, and get the new value plus the G-code to set it.",
-  "lede": "Extrude a known length, measure what actually came out, and this gives you the corrected e-steps for Marlin or rotation_distance for Klipper — plus the exact command to save it. It follows each firmware's own documented procedure, and catches the direction mistake everyone makes on Klipper.",
-  "short": "New e-steps (Marlin) or rotation_distance (Klipper) from an extrusion test, with the G-code to set it.",
+  "description": "Calibrate e-steps or Klipper rotation_distance from an extrusion test, or convert a Marlin value to Klipper and back, gear_ratio included.",
+  "lede": "Extrude a known length, measure what actually came out, and this gives you the corrected e-steps for Marlin or rotation_distance for Klipper — plus the exact command to save it. It follows each firmware's own documented procedure, and catches the direction mistake everyone makes on Klipper. Moving firmware? It also converts the value you already have, no extruding needed.",
+  "short": "Calibrate from an extrusion test, or convert Marlin e-steps to Klipper rotation_distance and back.",
   "category": "calibration",
   "order": 10,
-  "updated": "2026-09-08",
+  "updated": "2026-09-10",
   "related": ["flow-rate-calculator", "shrinkage-compensation-calculator", "temp-tower-generator", "max-volumetric-speed-calculator"],
   "faq": [
     {"q": "How do I calibrate e-steps?", "a": "Heat the hotend, mark the filament above the extruder entry, extrude slowly, then measure back to the mark. Marlin convention is a 120 mm mark and 100 mm extruded at F100. Klipper documents its own figures: a 70 mm mark, 50 mm extruded with G91 then G1 E50 F60. Either way, if 23 mm remains of a 120 mm mark after asking for 100, only 97 mm went in, so new e-steps = old × 100 ÷ 97. The calculator switches to each firmware's procedure when you pick it."},
@@ -14,6 +14,8 @@
     {"q": "What's the formula for e-steps?", "a": "New e-steps = current e-steps × requested length ÷ actual length extruded. For Klipper it's the other way up: new rotation_distance = current rotation_distance × actual length ÷ requested length, because rotation_distance is millimeters per revolution rather than steps per millimeter."},
     {"q": "Why is Klipper's formula inverted?", "a": "Marlin's e-steps counts motor steps per millimeter of filament — under-extrusion means you need more steps, so the number goes up. Klipper's rotation_distance is millimeters of filament per motor revolution — under-extrusion means each revolution moved less than the config claims, so the number goes down. Same fix, opposite arithmetic."},
     {"q": "How do I save the new value?", "a": "Marlin: send M92 E<value> then M500 to store it in EEPROM (if EEPROM is disabled, change DEFAULT_AXIS_STEPS_PER_UNIT in Configuration.h and reflash). Klipper: edit rotation_distance under [extruder] in printer.cfg and restart, or test first with SET_EXTRUDER_ROTATION_DISTANCE EXTRUDER=extruder DISTANCE=<value>, which lasts until the next restart."},
+    {"q": "How do I convert Marlin e-steps to Klipper rotation_distance?", "a": "Klipper documents the formula: rotation_distance = full_steps_per_rotation × microsteps ÷ steps_per_mm. With the usual 200-step motor and 16 microsteps, a stock Ender 3 at 93 steps/mm becomes 3200 ÷ 93 = 34.409. Use the microstepping the Marlin value was set at; Klipper's docs say to use 16 if unsure. The conversion gives you the value your printer was designed for, so it is still worth running the extrusion test afterwards."},
+    {"q": "Do I need gear_ratio for a geared extruder like a BMG?", "a": "Either way works, but you must be consistent, and this is where most conversions go wrong. A Marlin steps/mm for a geared extruder already includes the gearing. Converted directly, a BMG's 415 steps/mm gives 7.711 — correct only if you do not also set gear_ratio. If you do set gear_ratio: 50:17, Klipper measures rotation_distance at the final gear instead, so the value must be multiplied by the ratio, giving 22.679. Set gear_ratio without adjusting and you are out by about 3×."},
     {"q": "Do I still need to calibrate flow after e-steps?", "a": "Yes. E-steps make the extruder push the right length of filament; flow (extrusion multiplier) corrects for how that plastic actually spreads when printed. Do e-steps once per extruder, then tune flow per material with the flow rate calculator."}
   ]
 }
@@ -62,11 +64,85 @@
     <button type="button" class="btn" id="copy">Copy commands</button>
     <button type="button" class="btn-ghost" data-reset>Reset</button>
   </div>
+
+  <fieldset class="group" style="margin-top:28px">
+    <legend>Moving between Marlin and Klipper? Convert the value you already have</legend>
+    <p class="hint" style="margin:0 0 12px">A different job from the test above: this turns an existing Marlin e-steps figure into the equivalent Klipper rotation_distance, or back. No extruding needed.</p>
+    <div class="seg" role="radiogroup" aria-label="Conversion direction">
+      <label><input type="radio" name="convdir" id="conv_tokl" value="tokl" checked><span>Marlin → Klipper</span></label>
+      <label><input type="radio" name="convdir" id="conv_tomarlin" value="tomarlin"><span>Klipper → Marlin</span></label>
+    </div>
+    <div class="fields">
+      <div class="field" data-conv="tokl"><label for="cspm">Marlin e-steps</label><div class="inwrap"><input type="number" id="cspm" value="93" min="1" step="any" inputmode="decimal"><span class="unit">steps/mm</span></div><p class="hint">From M503 — the E value after M92.</p></div>
+      <div class="field" data-conv="tomarlin" hidden><label for="crd">Klipper rotation_distance</label><div class="inwrap"><input type="number" id="crd" value="34.409" min="0.001" step="any" inputmode="decimal"><span class="unit">mm/rev</span></div><p class="hint">From [extruder] in printer.cfg.</p></div>
+      <div class="field"><label for="cms">Microsteps</label><select id="cms"><option value="16" selected>16</option><option value="32">32</option><option value="64">64</option><option value="8">8</option><option value="128">128</option><option value="256">256</option></select><p class="hint">The microstepping the Marlin value was set at. Klipper's docs: if unsure, use 16.</p></div>
+      <div class="field"><label for="cfs">Motor full steps/rev</label><select id="cfs"><option value="200" selected>200 (1.8° motor)</option><option value="400">400 (0.9° motor)</option></select></div>
+      <div class="field"><label class="check" for="cusegear" style="margin-top:22px"><input type="checkbox" id="cusegear"> I set <code>gear_ratio</code> in Klipper</label></div>
+      <div class="field" data-gear hidden><label for="cgear">Gear ratio</label><div class="inwrap"><input type="text" id="cgear" value="50:17" inputmode="decimal"><span class="unit">ratio</span></div><p class="hint">As written in printer.cfg, e.g. <code>50:17</code> for a BMG, <code>50:10</code> for a Clockwork 2.</p></div>
+    </div>
+    <div class="results">
+      <div class="result primary" id="convbox"><div class="l" id="r_convlabel">Klipper rotation_distance</div><div class="v" id="r_convert">—</div><div class="s" id="r_converts"></div></div>
+    </div>
+    <div id="convwarn" class="warn-box" hidden></div>
+    <pre class="gcode" id="convsnippet"></pre>
+    <div class="actions"><button type="button" class="btn" id="copyconv">Copy config</button></div>
+  </fieldset>
 </form>
 <script>
 (function () {
   var applyMode = LC.modePanels("meth");
-  var snippet = "";
+  var applyConv = LC.modePanels("convdir", "data-conv");
+  var snippet = "", convSnippet = "";
+
+  // "50:17" -> 2.941..., "7.5:1" -> 7.5, "5" -> 5. Anything unparseable -> NaN.
+  function parseRatio(txt) {
+    var parts = String(txt || "").split(":").map(function (x) { return parseFloat(String(x).trim()); });
+    if (parts.length === 1) return parts[0] > 0 ? parts[0] : NaN;
+    return parts.length === 2 && parts[0] > 0 && parts[1] > 0 ? parts[0] / parts[1] : NaN;
+  }
+
+  // Klipper documents: rotation_distance = full_steps x microsteps / steps_per_mm.
+  // With gear_ratio set, Klipper measures rotation_distance at the final gear rather
+  // than the motor, so the same physical extruder needs it multiplied by the ratio.
+  // A Marlin steps/mm for a geared extruder already has the gearing baked in.
+  function convert() {
+    var dir = applyConv();
+    var ms = LC.num("cms"), fs = LC.num("cfs"), useGear = LC.checked("cusegear");
+    var gear = useGear ? parseRatio(LC.val("cgear")) : 1;
+    var gearPanels = document.querySelectorAll("[data-gear]");
+    for (var gi = 0; gi < gearPanels.length; gi++) gearPanels[gi].hidden = !useGear;
+
+    var warns = [];
+    if (useGear && !isFinite(gear)) warns.push("Couldn't read that gear ratio. Write it as it appears in printer.cfg, for example 50:17.");
+
+    if (dir === "tokl") {
+      var spm = LC.num("cspm"), rd = fs * ms * gear / spm;
+      LC.out("r_convlabel", "Klipper rotation_distance");
+      LC.out("r_convert", isFinite(rd) && spm > 0 ? rd.toFixed(3) : "—");
+      LC.out("r_converts", isFinite(rd) && spm > 0
+        ? fs + " × " + ms + (useGear && isFinite(gear) ? " × " + LC.fmt(gear, 3) : "") + " ÷ " + LC.fmt(spm, 2)
+        : "enter your Marlin e-steps");
+      if (isFinite(spm) && (spm < 20 || spm > 2000)) warns.push(LC.fmt(spm, 0) + " steps/mm is outside the range of any common extruder. Check you copied the E value, not X, Y or Z.");
+      if (!useGear && spm > 300) warns.push("That looks like a geared extruder. The result above is correct as long as you do not also set gear_ratio in Klipper. If you do set it, tick the box — otherwise you will be out by the ratio, roughly 3× for a BMG.");
+      convSnippet = isFinite(rd) && spm > 0
+        ? "[extruder]\nrotation_distance: " + rd.toFixed(3) + "\nmicrosteps: " + ms + "\nfull_steps_per_rotation: " + fs +
+          (useGear && isFinite(gear) ? "\ngear_ratio: " + LC.val("cgear").trim() : "")
+        : "";
+    } else {
+      var rdIn = LC.num("crd"), spmOut = fs * ms * gear / rdIn;
+      LC.out("r_convlabel", "Marlin e-steps");
+      LC.out("r_convert", isFinite(spmOut) && rdIn > 0 ? spmOut.toFixed(2) : "—");
+      LC.out("r_converts", isFinite(spmOut) && rdIn > 0
+        ? fs + " × " + ms + (useGear && isFinite(gear) ? " × " + LC.fmt(gear, 3) : "") + " ÷ " + LC.fmt(rdIn, 3)
+        : "enter your rotation_distance");
+      convSnippet = isFinite(spmOut) && rdIn > 0
+        ? "M92 E" + spmOut.toFixed(2) + "   ; set e-steps\nM500          ; save to EEPROM"
+        : "";
+    }
+    LC.out("convsnippet", convSnippet);
+    LC.show("convwarn", warns.length > 0);
+    LC.html("convwarn", warns.join("<br><br>"));
+  }
   var radios = document.getElementsByName("fw");
   for (var i = 0; i < radios.length; i++) radios[i].addEventListener("change", function () {
     var toKlipper = LC.checked("fw_klipper");
@@ -77,6 +153,7 @@
   });
 
   function calc() {
+    convert();
     var meth = applyMode();
     var klipper = LC.checked("fw_klipper");
     LC.out("curlabel", klipper ? "Current rotation_distance" : "Current e-steps");
@@ -109,6 +186,7 @@
     LC.out("snippet", snippet);
   }
   LC.copyButton("copy", function () { return snippet; });
+  LC.copyButton("copyconv", function () { return convSnippet; });
   LC.bind("f", calc);
 })();
 </script>
@@ -146,9 +224,32 @@
   <li><strong>A stepper motor with a different step angle</strong> (0.9° instead of 1.8°) or a geared extruder swap. These legitimately double or triple the value — the warning still fires, and that's fine if you know why.</li>
 </ul>
 
+<h2>Converting between Marlin and Klipper</h2>
+<p>A different job from calibration. If you are moving a printer from Marlin to Klipper, you already have a working e-steps figure &mdash; you want the equivalent <code>rotation_distance</code>, not a fresh measurement. Klipper documents the conversion:</p>
+<div class="formula">rotation_distance = full_steps_per_rotation × microsteps ÷ steps_per_mm<br>steps_per_mm      = full_steps_per_rotation × microsteps ÷ rotation_distance</div>
+<p><code>full_steps_per_rotation</code> is 200 for a 1.8° motor and 400 for a 0.9° one. <code>microsteps</code> is the microstepping your Marlin value was set at; Klipper's documentation says that if you are unsure, use 16 and set <code>microsteps: 16</code> in the config to match.</p>
+
+<div class="example">
+<h3>Worked example</h3>
+<ul>
+  <li>Stock Ender 3, 93 steps/mm, 16 microsteps: 200 × 16 ÷ 93 = <strong>34.409</strong></li>
+  <li>Same printer with a 0.9° motor: 400 × 16 ÷ 93 = <strong>68.817</strong></li>
+</ul>
+</div>
+
+<h3>The geared-extruder trap</h3>
+<p>This is where most conversions go wrong. A Marlin steps/mm figure for a geared extruder &mdash; a BMG, a Clockwork, an Orbiter &mdash; already has the gearing baked into it. Klipper gives you two ways to express the same extruder:</p>
+<ul>
+  <li><strong>Without <code>gear_ratio</code>:</strong> rotation_distance is measured at the motor. A BMG's 415 steps/mm converts directly to <strong>7.711</strong>.</li>
+  <li><strong>With <code>gear_ratio: 50:17</code>:</strong> Klipper measures rotation_distance at the final gear instead, so the same extruder needs <strong>22.679</strong> &mdash; the direct figure multiplied by the ratio.</li>
+</ul>
+<p>Both are correct. What breaks is mixing them: converting directly <em>and</em> setting <code>gear_ratio</code> leaves you out by the ratio, roughly 3× for a BMG, which shows up as severe over-extrusion on the first print. Tick the gear-ratio box above only if you intend to put <code>gear_ratio</code> in your config.</p>
+<p>A converted value is the figure your printer was designed around, not a calibrated one &mdash; if the Marlin value was never measured, neither is this. Run the extrusion test at the top of the page afterwards.</p>
+
 <h2>Sources</h2>
 <ul>
   <li>Klipper documentation, <em>Rotation distance</em> — the 70 mm mark, 50 mm extrusion at F60, the formula, three-decimal rounding, the speed warning and the 2 mm repeat threshold.</li>
+  <li>The same document for the steps/mm conversion formula and its microsteps guidance. It states that with <code>gear_ratio</code> set, rotation_distance is the travel per rotation of the final gear; the multiply-by-the-ratio rule for a geared extruder follows from that definition rather than being spelled out in the docs.</li>
   <li>Marlin documentation for <code>M92</code>, <code>M500</code> and <code>M503</code>.</li>
 </ul>
 
