@@ -214,6 +214,35 @@ d6ec206  Tower generator - three more tests
 
 
 ---------------------------------------------------------------------
+12 SEPTEMBER - AD AND CONSENT PLUMBING
+---------------------------------------------------------------------
+
+  Ads are still off. This makes switching them on safe.
+  * Consent Mode v2 defaults on every page, set before any Google
+    script runs: denied in the 32 countries that require consent
+    (EU 27, Iceland, Liechtenstein, Norway, UK, Switzerland), granted
+    elsewhere, with a 500 ms wait for the consent message. This was
+    a gap in the live site - Analytics had been setting cookies for
+    European visitors without consent. It no longer does.
+  * Checked against Google's current rules: AdSense requires a
+    Google-certified, TCF-integrated consent tool for EEA/UK/Swiss
+    visitors. Google's own "European regulations" message in
+    Privacy & messaging qualifies, is free, supports TCF v2.3, and
+    feeds these consent signals. docs/ADS.md now makes publishing it
+    a required step before requesting review.
+  * Manual ad slots are labelled "Advertisement", reserve their
+    height so a loading ad doesn't shift the page, collapse when
+    unfilled, and the one under the calculator has extra room so it
+    is not where a tap on a control lands (AdSense placement policy).
+  * tests/test_ads.py builds the site in a temp folder with dummy
+    IDs in four combinations and checks the consent ordering, the
+    AdSense script, ads.txt, slot placement, labels, privacy text
+    and CSS. 69 checks, runs on every deploy.
+  * Calibration category intro no longer asserts one calibration
+    order as the only one (the guide below it already said so).
+
+
+---------------------------------------------------------------------
 WHERE THINGS STAND
 ---------------------------------------------------------------------
 

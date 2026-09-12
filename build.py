@@ -74,7 +74,7 @@ CATEGORIES = {
         "title": "3D Printer Calibration Calculators",
         "h1": "3D printer calibration calculators",
         "description": "E-steps, flow rate, shrinkage compensation, magic layer heights, volumetric flow, belt tension and a test tower G-code generator. Free, in your browser.",
-        "intro": "Dial in a printer in the right order: extruder steps, then flow, then dimensional accuracy, then speed. Each tool tells you exactly which number to type into your firmware or slicer.",
+        "intro": "Extruder steps, flow, temperature, dimensional accuracy and speed. Each tool tells you exactly which number to type into your firmware or slicer, and where the calibration order is contested the pages say so.",
         "guide": "<h2>An order that works</h2>\n<p>There is no single agreed sequence &mdash; OrcaSlicer's own guide runs temperature before flow, and the reasoning cuts both ways. What is not in dispute is that each step assumes the one before it is already correct. Tuning flow before the extruder is delivering the right length of filament, for instance, just bakes the extruder error into a flow number that will be wrong again the moment you fix it. The order below is the one that converges.</p>\n<ol>\n<li><strong>Extruder steps</strong> &mdash; e-steps on Marlin, rotation_distance on Klipper. Done once per extruder, not per material. Confirms the printer pushes 100&nbsp;mm when you ask for 100&nbsp;mm.</li>\n<li><strong>Flow rate</strong> &mdash; the extrusion multiplier, tuned per material. Corrects for how the plastic actually spreads once it leaves the nozzle: filament diameter tolerance, melt temperature, and the slicer's assumptions.</li>\n<li><strong>Temperature and retraction</strong> &mdash; a test tower per filament. Do this after flow, or over-extrusion will look exactly like printing too hot.</li>\n<li><strong>Dimensional accuracy</strong> &mdash; shrinkage compensation and hole offsets, per material. Only meaningful once the right amount of plastic is coming out.</li>\n<li><strong>Speed</strong> &mdash; find the hotend's volumetric ceiling last, since it determines which of your speed settings are doing anything at all.</li>\n</ol>\n<h3>Mechanical checks sit outside that sequence</h3>\n<p>Belt tension and layer-height selection are not part of the extrusion chain, but they set a ceiling on what any amount of tuning can achieve. Loose belts produce ringing that looks like an acceleration problem; a layer height that lands between full motor steps can show faint banding on glossy walls that no flow adjustment will remove. Both are worth checking before you spend an evening chasing extrusion settings.</p>\n<h3>How much of this does a modern printer need?</h3>\n<p>Less than it used to. Bambu, Prusa and most Klipper machines ship with the extruder already calibrated and the mechanics square, so flow and temperature per filament is often the whole job. E-steps matter most on budget machines and on anything you have modified &mdash; a new extruder, motor or mainboard puts you back at step one.</p>",
     },
     "filament": {
@@ -128,7 +128,7 @@ def strip_tags(s: str) -> str:
 
 def render(template: str, ctx: dict) -> str:
     """Minimal {{key}} substitution. Values are inserted raw."""
-    ctx = {"head_extra": analytics_head() + adsense_head(), **ctx}
+    ctx = {"head_extra": consent_head() + analytics_head() + adsense_head(), **ctx}
 
     def sub(m):
         key = m.group(1).strip()
@@ -156,13 +156,36 @@ def human_date(iso: str) -> str:
 
 # ------------------------------------------------------------- monetization
 
+# Consent Mode v2 has to be told, before any Google tag runs, what to assume until
+# a visitor chooses. The EEA (the EU plus Iceland, Liechtenstein and Norway), the UK
+# and Switzerland start denied, because Google requires consent there; everywhere
+# else starts granted. Google's certified consent message (AdSense > Privacy &
+# messaging) updates these signals once a visitor answers, and both AdSense and
+# Analytics read them.
+CONSENT_REGIONS = [
+    "AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IE",
+    "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK", "SI", "ES", "SE",
+    "IS", "LI", "NO", "GB", "CH",
+]
+
+
+def consent_head() -> str:
+    if not (MONETIZATION["ga4_id"] or MONETIZATION["adsense_client"]):
+        return ""
+    denied = ("{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',"
+              "analytics_storage:'denied',wait_for_update:500,region:" + json.dumps(CONSENT_REGIONS) + "}")
+    granted = "{ad_storage:'granted',ad_user_data:'granted',ad_personalization:'granted',analytics_storage:'granted'}"
+    return ("<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}"
+            f"gtag('consent','default',{denied});gtag('consent','default',{granted});</script>\n")
+
+
 def analytics_head() -> str:
     gid = MONETIZATION["ga4_id"]
     if not gid:
         return ""
+    # gtag() and dataLayer are defined by consent_head(), which always comes first.
     return (f'<script async src="https://www.googletagmanager.com/gtag/js?id={gid}"></script>\n'
-            f"<script>window.dataLayer=window.dataLayer||[];function gtag(){{dataLayer.push(arguments);}}"
-            f"gtag('js',new Date());gtag('config','{gid}');</script>\n")
+            f"<script>gtag('js',new Date());gtag('config','{gid}');</script>\n")
 
 
 def adsense_head() -> str:
@@ -183,10 +206,15 @@ def ad_unit(slot_key: str) -> str:
     slot = MONETIZATION["adsense_slots"].get(slot_key, "")
     if not client or not slot:
         return f"  <!-- ad slot: {slot_key} -->"
-    return (f'  <div class="ad-slot"><ins class="adsbygoogle" style="display:block" '
+    # Labelled as an ad, and given reserved height in the stylesheet so the page
+    # does not jump when it loads. AdSense's placement policy prohibits ads that
+    # invite accidental clicks, so the slot under the calculator gets extra space.
+    return (f'  <aside class="ad-slot ad-{slot_key}" aria-label="Advertisement">'
+            f'<span class="ad-label">Advertisement</span>'
+            f'<ins class="adsbygoogle" style="display:block" '
             f'data-ad-client="{client}" data-ad-slot="{slot}" data-ad-format="auto" '
             f'data-full-width-responsive="true"></ins>'
-            f'<script>(adsbygoogle=window.adsbygoogle||[]).push({{}});</script></div>')
+            f'<script>(adsbygoogle=window.adsbygoogle||[]).push({{}});</script></aside>')
 
 
 def ads_txt() -> str | None:
@@ -471,15 +499,16 @@ def privacy_ads_paragraph() -> str:
                 "You can opt out of personalized advertising at <a href=\"https://www.google.com/settings/ads\" rel=\"noopener\" "
                 "target=\"_blank\">Google Ads Settings</a>, and read how Google uses data at "
                 "<a href=\"https://policies.google.com/technologies/partner-sites\" rel=\"noopener\" target=\"_blank\">"
-                "policies.google.com/technologies/partner-sites</a>. Visitors in regions that require it are shown a consent "
-                "prompt before any advertising cookies are set.</p>")
+                "policies.google.com/technologies/partner-sites</a>. Visitors in the European Economic Area, the UK and "
+                "Switzerland are asked through a Google-certified consent tool, and advertising cookies stay off until they choose.</p>")
     return "<p>This site does not currently show advertising and sets no advertising cookies. If that changes, this page will say so.</p>"
 
 
 def privacy_analytics_paragraph() -> str:
     if MONETIZATION["ga4_id"]:
         return ("<p>We use Google Analytics to understand which pages are used. It sets cookies and records anonymized usage "
-                "data (pages viewed, approximate location, device type). You can block it with any content blocker or the "
+                "data (pages viewed, approximate location, device type). For visitors in the European Economic Area, "
+                "the UK and Switzerland, analytics cookies are off by default and are only set if you consent. You can block it with any content blocker or the "
                 "<a href=\"https://tools.google.com/dlpage/gaoptout\" rel=\"noopener\" target=\"_blank\">Google Analytics opt-out</a>.</p>")
     return "<p>We do not run analytics scripts. The hosting provider keeps standard, anonymized server logs.</p>"
 

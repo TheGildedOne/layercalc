@@ -43,6 +43,12 @@ jobs:
       - name: Test calculator outputs
         run: node tests/run.js
 
+      # Ads are off on the live site, so nothing else exercises that code. This
+      # builds into a temp directory with dummy AdSense and Analytics IDs and
+      # checks the consent, ad, ads.txt and privacy plumbing before it is ever used.
+      - name: Test ad and consent plumbing
+        run: python tests/test_ads.py
+
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3
